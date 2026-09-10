@@ -1,0 +1,66 @@
+# Render Blueprint — https://dashboard.render.com/select-repo?type=blueprint
+# Create this from the GitHub repo. Fill env values in the Render dashboard
+# (do not commit secrets). After the web service is live, set its public URL
+# as the Vercel /api rewrite destination if you host the playground on Vercel.
+
+services:
+  - type: web
+    name: sobha-voice-web
+    runtime: python
+    plan: starter
+    region: singapore
+    pythonVersion: "3.11.11"
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: SPAWN_AGENT
+        value: "0"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: ELEVEN_API_KEY
+        sync: false
+      - key: ELEVEN_VOICE_ID
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: worker
+    name: sobha-voice-agent
+    runtime: python
+    plan: starter
+    region: singapore
+    pythonVersion: "3.11.11"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python src/agent.py start
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: ELEVEN_API_KEY
+        sync: false
+      - key: ELEVEN_VOICE_ID
+        sync: false

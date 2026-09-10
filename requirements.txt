@@ -1,0 +1,13 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-dotenv>=1.0.0
+python-decouple>=3.8
+aiohttp>=3.10.0
+openai>=1.40.0
+livekit>=1.0.23
+livekit-agents>=1.8.0
+livekit-api>=1.1.0
+livekit-plugins-openai>=1.4.1
+livekit-plugins-deepgram>=1.4.1
+livekit-plugins-elevenlabs>=1.4.1
+livekit-plugins-silero>=1.4.1
