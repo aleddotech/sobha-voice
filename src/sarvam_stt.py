@@ -37,6 +37,7 @@ _LANG_MAP = {
     "te-IN": "te-IN",
     "auto": "unknown",
     "unknown": "unknown",
+    "ar": "unknown",
 }
 
 

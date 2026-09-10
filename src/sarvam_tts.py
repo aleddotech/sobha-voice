@@ -1,10 +1,8 @@
 """
 sarvam_tts.py — Sarvam AI Bulbul TTS Plugin for LiveKit Agents
 --------------------------------------------------------------
-High-quality, ultra-natural Indian language text-to-speech engine.
-Supports en-IN, hi-IN, ml-IN (Malayalam), and other Indian languages natively.
-Includes automatic script detection (Malayalam, Hindi, English) and fallback
-to ElevenLabs for Arabic (ar) or unsupported scripts.
+Sarvam: Hindi, Malayalam.
+ElevenLabs fallback: English, Arabic (including mid-conversation switches).
 """
 
 from __future__ import annotations
@@ -22,6 +20,10 @@ from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions
 _BASE_URL = "https://api.sarvam.ai/text-to-speech"
 _DEFAULT_MODEL = "bulbul:v3"
 _DEFAULT_SPEAKER = "ritu"
+
+# Hindi / Malayalam stay on Sarvam. English + Arabic go to ElevenLabs.
+_SARVAM_LANGS = {"hi", "hi-IN", "ml", "ml-IN"}
+_ELEVENLABS_LANGS = {"en", "en-IN", "ar", "ar-SA", "ar-AE"}
 
 # Map language codes to Sarvam target_language_code
 _LANG_MAP = {
@@ -61,6 +63,16 @@ def detect_text_language(text: str) -> Optional[str]:
     return None
 
 
+def _uses_elevenlabs(lang: str) -> bool:
+    if not lang:
+        return True
+    if lang in _ELEVENLABS_LANGS or lang.startswith("ar"):
+        return True
+    if lang in _SARVAM_LANGS or lang in _LANG_MAP.values():
+        return False
+    return lang not in _LANG_MAP and lang not in _LANG_MAP.values()
+
+
 @dataclass
 class _TTSOpts:
     api_key: str
@@ -78,20 +90,23 @@ class _ChunkedStream(tts.ChunkedStream):
     async def _run(self, output_emitter: tts.AudioEmitter) -> None:
         opts = self._sarvam_tts._opts
 
-        # Auto-detect script if present in text, else use configured language
         detected = detect_text_language(self._input_text)
-        target_lang = detected if (detected and detected in _LANG_MAP.values()) else opts.target_language_code
+        if detected in ("hi-IN", "ml-IN"):
+            target_lang = detected
+        elif detected == "ar":
+            target_lang = "ar"
+        else:
+            target_lang = opts.target_language_code
 
-        # If Arabic or non-Indian language detected and fallback TTS is available
-        if (detected == "ar" or target_lang == "ar") and self._sarvam_tts._fallback_tts:
+        if self._sarvam_tts._fallback_tts and _uses_elevenlabs(target_lang):
+            print(f"[TTS] ElevenLabs ({target_lang})", flush=True)
             fallback_stream = self._sarvam_tts._fallback_tts.synthesize(
                 self._input_text, conn_options=self._conn_options
             )
-            async for ev in fallback_stream:
-                if hasattr(ev, "frame") and ev.frame:
-                    output_emitter.push(ev.frame.data.tobytes())
-            output_emitter.flush()
+            await fallback_stream._run(output_emitter)
             return
+
+        print(f"[TTS] Sarvam ({target_lang})", flush=True)
 
         payload = {
             "inputs": [self._input_text],
@@ -112,13 +127,11 @@ class _ChunkedStream(tts.ChunkedStream):
                 body = await resp.text()
                 # If Sarvam fails and we have fallback, try fallback
                 if self._sarvam_tts._fallback_tts:
+                    print("[TTS] Sarvam failed, falling back to ElevenLabs", flush=True)
                     fallback_stream = self._sarvam_tts._fallback_tts.synthesize(
                         self._input_text, conn_options=self._conn_options
                     )
-                    async for ev in fallback_stream:
-                        if hasattr(ev, "frame") and ev.frame:
-                            output_emitter.push(ev.frame.data.tobytes())
-                    output_emitter.flush()
+                    await fallback_stream._run(output_emitter)
                     return
                 raise Exception(f"Sarvam TTS API returned status {resp.status}: {body}")
 
@@ -146,8 +159,7 @@ class _ChunkedStream(tts.ChunkedStream):
 class SarvamTTS(tts.TTS):
     """
     LiveKit TTS Plugin powered by Sarvam AI Bulbul TTS.
-    Specialized for natural Indian languages (Malayalam, Hindi, English).
-    Supports seamless fallback to another TTS (e.g. ElevenLabs) for Arabic.
+    Sarvam for Hindi and Malayalam. ElevenLabs fallback for English and Arabic.
     """
 
     def __init__(
@@ -155,7 +167,7 @@ class SarvamTTS(tts.TTS):
         *,
         api_key: Optional[str] = None,
         speaker: str = _DEFAULT_SPEAKER,
-        language: str = "en-IN",
+        language: str = "en",
         model: str = _DEFAULT_MODEL,
         pace: float = 1.0,
         fallback_tts: Optional[tts.TTS] = None,
@@ -170,12 +182,11 @@ class SarvamTTS(tts.TTS):
         if not resolved_key:
             raise ValueError("Sarvam API key must be provided or set in SARVAM_API_KEY")
 
-        target_lang = _LANG_MAP.get(language, language)
         self._opts = _TTSOpts(
             api_key=resolved_key,
             speaker=speaker,
             model=model,
-            target_language_code=target_lang,
+            target_language_code=_LANG_MAP.get(language, language),
             pace=pace,
         )
         self._fallback_tts = fallback_tts
@@ -187,8 +198,14 @@ class SarvamTTS(tts.TTS):
         return self._session
 
     def update_language(self, language: str):
-        target_lang = _LANG_MAP.get(language, language)
-        self._opts.target_language_code = target_lang
+        lang = (language or "en").strip()
+        self._opts.target_language_code = _LANG_MAP.get(lang, lang)
+        if self._fallback_tts and hasattr(self._fallback_tts, "update_options"):
+            el_lang = "ar" if lang.startswith("ar") else "en"
+            try:
+                self._fallback_tts.update_options(language=el_lang)
+            except Exception:
+                pass
 
     def synthesize(
         self,

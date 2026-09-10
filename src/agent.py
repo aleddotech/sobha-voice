@@ -33,6 +33,7 @@ from livekit.agents.stt import StreamAdapter
 
 from sarvam_tts import SarvamTTS
 from sarvam_stt import SarvamSTT
+from routed_stt import RoutedSTT
 
 try:
     from livekit.plugins import noise_cancellation
@@ -49,7 +50,7 @@ _REQUIRED_KEYS = [
     ("LIVEKIT_API_KEY", "LiveKit API Key"),
     ("LIVEKIT_API_SECRET", "LiveKit API Secret"),
     ("SARVAM_API_KEY", "Sarvam AI STT/TTS"),
-    ("DEEPGRAM_API_KEY", "Deepgram STT Fallback"),
+    ("DEEPGRAM_API_KEY", "Deepgram Nova-3 STT (English, Arabic)"),
     ("ELEVEN_API_KEY", "ElevenLabs Multilingual Fallback"),
     ("OPENAI_API_KEY", "OpenAI LLM"),
 ]
@@ -99,6 +100,11 @@ def _save_db(db: list):
 async def sobha_voice_agent(ctx: JobContext):
     print(f"[SOBHA] >>> Entrypoint called for room {ctx.room.name}", flush=True)
     logger.info(f"Starting Sobha agent for room {ctx.room.name}")
+
+    # Join immediately so the playground leaves "waiting for agent"
+    # before STT/TTS clients are constructed.
+    await ctx.connect()
+    print(f"[SOBHA] >>> Connected to room {ctx.room.name}", flush=True)
 
     try:
         initial_ctx = llm.ChatContext()
@@ -243,39 +249,55 @@ async def sobha_voice_agent(ctx: JobContext):
             activation_threshold=0.45,
         )
 
-        # Fallback TTS for Arabic
-        fallback_arabic_tts = elevenlabs.TTS(
+        # ElevenLabs for English + Arabic; Sarvam for Hindi + Malayalam
+        elevenlabs_tts = elevenlabs.TTS(
             model="eleven_multilingual_v2",
             voice_id=config("ELEVEN_VOICE_ID", default="i80JxxvpWr5Q7cTdT1Ik"),
             api_key=config("ELEVEN_API_KEY"),
             streaming_latency=4,
         )
 
-        # Sarvam AI Bulbul TTS (Native Indian accents for Malayalam, Hindi, English)
         sarvam_tts_engine = SarvamTTS(
             api_key=config("SARVAM_API_KEY"),
             speaker="ritu",
             model="bulbul:v3",
-            language="en-IN",
+            language="en",
             pace=1.0,
-            fallback_tts=fallback_arabic_tts,
+            fallback_tts=elevenlabs_tts,
         )
 
-        # Sarvam AI Saaras STT with StreamAdapter for turn-based continuous transcription
         raw_sarvam_stt = SarvamSTT(
             api_key=config("SARVAM_API_KEY"),
             model="saaras:v3",
-            language="unknown",
+            language="hi",
         )
-        sarvam_stt_adapter = StreamAdapter(
-            stt=raw_sarvam_stt,
+        deepgram_stt = deepgram.STT(
+            model="nova-3",
+            language="en-IN",
+            api_key=config("DEEPGRAM_API_KEY"),
+            interim_results=False,
+            punctuate=True,
+            smart_format=True,
+            filler_words=False,
+        )
+        routed_stt = RoutedSTT(
+            sarvam=raw_sarvam_stt,
+            deepgram=deepgram_stt,
+            language="en",
+        )
+        stt_adapter = StreamAdapter(
+            stt=routed_stt,
             vad=vad,
         )
 
-        print("[SOBHA] >>> Configured Sarvam Bulbul TTS (v3 ritu) & Sarvam Saaras STT (v3 multi) with ElevenLabs Arabic fallback", flush=True)
+        print(
+            "[SOBHA] >>> TTS: Sarvam (hi, ml) | ElevenLabs (en, ar). "
+            "STT: Sarvam (hi, ml) | Deepgram Nova-3 (en, ar)",
+            flush=True,
+        )
 
         session = AgentSession(
-            stt=sarvam_stt_adapter,
+            stt=stt_adapter,
             llm=openai.LLM(
                 api_key=config("OPENAI_API_KEY"),
                 model="gpt-4o-mini",
@@ -313,8 +335,14 @@ async def sobha_voice_agent(ctx: JobContext):
                 lang_names = {"en": "English", "hi": "Hindi", "ar": "Arabic", "ml": "Malayalam"}
                 name = lang_names.get(lang, lang)
                 sarvam_tts_engine.update_language(lang)
-                raw_sarvam_stt.update_language(lang)
-                print(f"[SOBHA] >>> Language switched to {name} ({lang}) in TTS & STT", flush=True)
+                routed_stt.update_language(lang)
+                tts_engine = "ElevenLabs" if lang in ("en", "ar") else "Sarvam"
+                stt_engine = "Deepgram" if lang in ("en", "ar") else "Sarvam"
+                print(
+                    f"[SOBHA] >>> Language switched to {name} ({lang}); "
+                    f"TTS={tts_engine} STT={stt_engine}",
+                    flush=True,
+                )
                 return f"Language switched to {name}. Please respond in {name} from now on."
 
         agent = SobhaAgent(
@@ -324,7 +352,7 @@ async def sobha_voice_agent(ctx: JobContext):
 
 
         room_opts = room_io.RoomOptions()
-        if _HAS_NOISE_CANCELLATION:
+        if _HAS_NOISE_CANCELLATION and os.getenv("ENABLE_BVC", "0").strip() in ("1", "true", "True"):
             room_opts = room_io.RoomOptions(
                 audio_input=room_io.AudioInputOptions(
                     noise_cancellation=noise_cancellation.BVC(),

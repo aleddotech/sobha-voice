@@ -27,9 +27,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from livekit.api import AccessToken, VideoGrants
+from livekit.api import (
+    AccessToken,
+    VideoGrants,
+    LiveKitAPI,
+    CreateAgentDispatchRequest,
+)
 from livekit.protocol.room import RoomConfiguration
 from livekit.protocol.agent_dispatch import RoomAgentDispatch
+
+AGENT_NAME = "sobha-agent"
 
 LIVEKIT_URL = os.getenv("LIVEKIT_URL", "")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "")
@@ -101,13 +108,33 @@ async def get_token():
     room_name = f"sobha-{uuid.uuid4().hex[:8]}"
     identity = f"user-{uuid.uuid4().hex[:6]}"
 
+    http_url = LIVEKIT_URL.replace("wss://", "https://").replace("ws://", "http://")
+    lkapi = LiveKitAPI(http_url, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    try:
+        await lkapi.agent_dispatch.create_dispatch(
+            CreateAgentDispatchRequest(agent_name=AGENT_NAME, room=room_name)
+        )
+        print(f"[Server] Dispatched {AGENT_NAME} to {room_name}", flush=True)
+    except Exception as e:
+        print(f"[Server] ERROR creating agent dispatch: {e}", flush=True)
+    finally:
+        await lkapi.aclose()
+
     token = (
         AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
         .with_identity(identity)
-        .with_grants(VideoGrants(room_join=True, room=room_name))
+        .with_grants(
+            VideoGrants(
+                room_join=True,
+                room=room_name,
+                can_publish=True,
+                can_subscribe=True,
+                can_publish_data=True,
+            )
+        )
         .with_room_config(
             RoomConfiguration(
-                agents=[RoomAgentDispatch(agent_name="sobha-agent")],
+                agents=[RoomAgentDispatch(agent_name=AGENT_NAME)],
             )
         )
         .with_ttl(datetime.timedelta(hours=1))
@@ -125,7 +152,7 @@ async def get_token():
 async def health():
     return {
         "status": "ok",
-        "agent": "sobha-agent",
+        "agent": AGENT_NAME,
         "worker_running": _agent_process is not None and _agent_process.poll() is None,
         "spawn_agent": _SPAWN_AGENT,
     }
