@@ -9,11 +9,12 @@ services:
     runtime: python
     plan: starter
     region: singapore
-    pythonVersion: "3.11.11"
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn src.server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
       - key: SPAWN_AGENT
         value: "0"
       - key: PYTHONUNBUFFERED
@@ -42,10 +43,11 @@ services:
     runtime: python
     plan: starter
     region: singapore
-    pythonVersion: "3.11.11"
     buildCommand: pip install -r requirements.txt
     startCommand: python src/agent.py start
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: LIVEKIT_URL
