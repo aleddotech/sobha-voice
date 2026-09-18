@@ -20,7 +20,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.11"
       - key: SPAWN_AGENT
-        value: "0"
+        value: "1"
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: CALLS_DB_PATH

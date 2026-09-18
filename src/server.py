@@ -99,6 +99,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_last_dispatch = {"ok": None, "error": None, "room": None}
+
 @app.get("/api/token")
 async def get_token():
     """Generate a fresh LiveKit token with RoomAgentDispatch for sobha-agent."""
@@ -130,8 +132,10 @@ async def get_token():
             CreateAgentDispatchRequest(agent_name=AGENT_NAME, room=room_name)
         )
         print(f"[Server] Dispatched {AGENT_NAME} to {room_name}", flush=True)
+        _last_dispatch.update({"ok": True, "error": None, "room": room_name})
     except Exception as e:
         print(f"[Server] ERROR creating agent dispatch: {e}", flush=True)
+        _last_dispatch.update({"ok": False, "error": str(e), "room": room_name})
     finally:
         await lkapi.aclose()
 
@@ -170,6 +174,7 @@ async def health():
         "agent": AGENT_NAME,
         "worker_running": _agent_process is not None and _agent_process.poll() is None,
         "spawn_agent": _SPAWN_AGENT,
+        "last_dispatch": _last_dispatch,
     }
 
 @app.get("/", response_class=HTMLResponse)
