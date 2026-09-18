@@ -356,9 +356,9 @@
 
 <header>
   <div class="logo">
-    <span>🏢</span>
+    <span>S</span>
     Sobha Voice Agent
-    <span class="logo-badge">LIVEKIT</span>
+    <span class="logo-badge">Employee Support Line</span>
   </div>
   <div class="langs">
     English • हिन्दी • العربية • മലയാളം
@@ -419,7 +419,7 @@
 </main>
 
 <footer>
-  Sobha Voice Agent &middot; Powered by LiveKit WebRTC, Silero VAD, Deepgram Nova-3 & ElevenLabs
+  Sobha Voice Agent · <a href="/dashboard" style="color:var(--gold)">Dashboard</a>
 </footer>
 
 <script>
@@ -443,6 +443,9 @@ let localStream = null;
 let audioCtx = null;
 let analyser = null;
 let vizBars = [];
+let mediaRecorder = null;
+let recordedChunks = [];
+let currentCallId = null;
 
 const _streamingSegs = new Map();
 
@@ -610,6 +613,8 @@ async function connect() {
   }
 
   roomInfoEl.innerHTML = "Room: <b>" + data.room + "</b> &middot; Identity: <b>" + data.identity + "</b>";
+  currentCallId = data.room;
+  startCallRecorder(localStream);
   setStatus("Connecting to Sobha…", "connecting");
 
   room = new Room({
@@ -718,11 +723,52 @@ function cleanup() {
 }
 
 async function disconnect() {
+  await stopCallRecorder();
   if (room) {
     try { await room.disconnect(); } catch (_) {}
     room = null;
   }
   cleanup();
+}
+
+function startCallRecorder(stream) {
+  recordedChunks = [];
+  try {
+    const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+    mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
+    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recordedChunks.push(e.data); };
+    mediaRecorder.start(1000);
+  } catch (e) {
+    console.warn("recorder", e);
+    mediaRecorder = null;
+  }
+}
+
+async function stopCallRecorder() {
+  const id = currentCallId;
+  const rec = mediaRecorder;
+  mediaRecorder = null;
+  if (!rec || rec.state === "inactive") {
+    currentCallId = null;
+    return;
+  }
+  await new Promise((resolve) => {
+    rec.onstop = resolve;
+    try { rec.stop(); } catch (_) { resolve(); }
+  });
+  if (id && recordedChunks.length) {
+    const blob = new Blob(recordedChunks, { type: rec.mimeType || "audio/webm" });
+    const apiBase = (window.SOBHA_API_BASE || "").replace(/\/$/, "");
+    const fd = new FormData();
+    fd.append("file", blob, id + ".webm");
+    try {
+      await fetch(apiBase + "/api/calls/" + id + "/audio", { method: "POST", body: fd });
+    } catch (e) {
+      console.warn("upload audio", e);
+    }
+  }
+  recordedChunks = [];
+  currentCallId = null;
 }
 
 btnEnd.addEventListener("click", async () => {

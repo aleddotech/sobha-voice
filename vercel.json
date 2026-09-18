@@ -3,6 +3,8 @@
   "framework": null,
   "rewrites": [
     { "source": "/", "destination": "/src/static/index.html" },
+    { "source": "/dashboard", "destination": "/src/static/dashboard.html" },
+    { "source": "/dashboard/", "destination": "/src/static/dashboard.html" },
     {
       "source": "/api/:path*",
       "destination": "https://sobha-voice-web.onrender.com/api/:path*"

@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sobha Employee Support Line</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@400;450;500;600;650&display=swap" rel="stylesheet">
+<style>
+:root{
+  --espresso:#0B0B0C;
+  --espresso-2:#1C1C1E;
+  --espresso-3:#232325;
+  --mocha:#3A3A3C;
+  --mocha-dim:#2C2C2E;
+  --gold:#C9A56E;
+  --gold-soft:#F6F1E8;
+  --ivory:#F9F9F8;
+  --card:#FFFFFF;
+  --line:#E7E7E5;
+  --line-soft:#F1F1EF;
+  --text:#1D1D1F;
+  --muted:#86868B;
+  --muted-2:#A1A1A6;
+  --green:#4A7C59;
+  --green-bg:#EDF4EF;
+  --amber:#A97A24;
+  --amber-bg:#FBF3E4;
+  --red:#A9483F;
+  --red-bg:#FAEDEB;
+  --blue:#3E6285;
+  --blue-bg:#EDF2F7;
+  --r:10px;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--sans);background:var(--ivory);color:var(--text);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;display:flex;
+}
+button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+a{color:inherit}
+::selection{background:var(--gold-soft);color:var(--espresso)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+/* ---------------- Login ---------------- */
+.login{position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:1.05fr 1fr;background:var(--card)}
+.login-art{
+  position:relative;background:var(--espresso);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;padding:48px;color:#F5F5F7;
+}
+.login-art:before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(900px 520px at 78% 12%, rgba(201,165,110,.30), transparent 62%),
+    radial-gradient(700px 480px at 12% 92%, rgba(40,40,44,.55), transparent 66%);
+}
+.login-art:after{
+  content:'';position:absolute;right:-140px;bottom:-190px;width:560px;height:560px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.13);
+}
+.la-rings{position:absolute;right:-90px;bottom:-140px;width:420px;height:420px;border-radius:50%;border:1px solid rgba(255,255,255,.10)}
+.la-center{position:relative;z-index:2;text-align:center}
+.la-logo{width:148px;height:148px;border-radius:32px;display:block;margin:0 auto;box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06)}
+.la-rule{width:56px;height:1px;background:var(--gold);margin:24px auto}
+.la-tag{font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:#8E8E93}
+
+.login-form{display:flex;align-items:center;justify-content:center;padding:40px}
+.lf-inner{width:100%;max-width:352px}
+.lf-logo{width:40px;height:40px;border-radius:10px;display:block}
+.lf-h{font-family:var(--serif);font-size:32px;font-weight:500;margin-top:12px;letter-spacing:-.01em}
+.lf-sub{font-size:13px;color:var(--muted);margin-top:6px}
+.lf-field{margin-top:16px}
+.lf-lab{font-size:11.5px;font-weight:550;letter-spacing:.02em;color:var(--text);display:block;margin-bottom:6px}
+.lf-in{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);transition:border-color .14s,box-shadow .14s}
+.lf-in:focus{outline:none;border-color:var(--mocha);box-shadow:0 0 0 3px rgba(40,40,44,.09)}
+.lf-row{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--muted)}
+.lf-check{display:flex;align-items:center;gap:7px;cursor:pointer}
+.lf-btn{width:100%;margin-top:20px;padding:11px;border-radius:8px;background:var(--espresso);color:#fff;font-weight:600;font-size:13.5px;transition:background .14s}
+.lf-btn:hover{background:var(--espresso-2)}
+.lf-div{display:flex;align-items:center;gap:12px;margin:22px 0 18px;color:var(--muted-2);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.lf-div:before,.lf-div:after{content:'';flex:1;height:1px;background:var(--line)}
+.sso{display:flex;flex-direction:column;gap:9px}
+.sso-btn{display:flex;align-items:center;justify-content:center;gap:9px;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:520;background:var(--card);transition:background .14s,border-color .14s}
+.sso-btn:hover{background:#F8F8F7;border-color:#D6D6D4}
+.sso-btn svg{width:16px;height:16px;flex-shrink:0}
+.lf-foot{margin-top:26px;font-size:11.5px;color:var(--muted-2);text-align:center;line-height:1.6}
+@media (max-width:900px){.login{grid-template-columns:1fr}.login-art{display:none}}
+
+/* ---------------- Sidebar ---------------- */
+.sidebar{width:236px;flex-shrink:0;background:var(--espresso);color:#E5E5E7;display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.brand{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.brand-logo{width:44px;height:44px;border-radius:11px;display:block;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.nav{padding:14px 12px;flex:1;overflow-y:auto}
+.nav-label{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#6E6E73;padding:10px 8px 6px}
+.nav-item{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;border-radius:7px;color:#A1A1A6;font-size:13.5px;text-align:left;transition:background .13s,color .13s;position:relative}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#F5F5F7}
+.nav-item.active{background:var(--espresso-3);color:#fff;font-weight:550;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.nav-item.active:before{content:'';position:absolute;left:0;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--gold)}
+.nav-item.active .nav-ico{color:var(--gold)}
+.nav-ico{width:16px;height:16px;flex-shrink:0;color:#6E6E73;transition:color .13s}
+.nav-count{margin-left:auto;font-size:11px;color:#6E6E73;font-variant-numeric:tabular-nums}
+.nav-item.active .nav-count{color:#A1A1A6}
+.sidebar-foot{padding:14px 16px;border-top:1px solid rgba(255,255,255,.07)}
+.user{display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--espresso-3);color:var(--gold);display:grid;place-items:center;font-size:11px;font-weight:650;flex-shrink:0}
+.user-name{font-size:12.5px;font-weight:500;color:#E5E5E7;line-height:1.25}
+.user-role{font-size:11px;color:#6E6E73;line-height:1.3}
+
+/* ---------------- Main ---------------- */
+.main{flex:1;min-width:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;background:var(--ivory)}
+.topbar{background:var(--card);border-bottom:1px solid var(--line);padding:16px 30px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;position:sticky;top:0;z-index:20}
+.page-title{font-size:19px;font-weight:600;letter-spacing:-.018em}
+.page-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.topbar-actions{display:flex;align-items:center;gap:9px}
+.content{padding:24px 30px 72px;flex:1}
+
+/* ---------------- Primitives ---------------- */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:7px;font-size:13px;font-weight:520;border:1px solid var(--line);background:var(--card);color:var(--text);transition:background .13s,border-color .13s;white-space:nowrap}
+.btn:hover{background:#F8F8F7;border-color:#D6D6D4}
+.btn-primary{background:var(--espresso);border-color:var(--espresso);color:#fff;font-weight:600}
+.btn-primary:hover{background:var(--espresso-2);border-color:var(--espresso-2)}
+.btn-gold{background:var(--gold);border-color:var(--gold);color:#1C1C1E;font-weight:600}
+.btn-gold:hover{background:#AB855A;border-color:#AB855A}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.card-head{padding:15px 18px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.card-title{font-size:13.5px;font-weight:600;letter-spacing:-.008em}
+.card-note{font-size:12px;color:var(--muted)}
+.card-body{padding:18px}
+.eyebrow{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+.welcome{margin-bottom:20px}
+.welcome-h{font-family:var(--serif);font-size:30px;font-weight:500;letter-spacing:-.012em;line-height:1.1}
+.welcome-p{font-size:12.5px;color:var(--muted);margin-top:7px}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:30px 0 13px}
+.sec-title{font-size:15px;font-weight:600;letter-spacing:-.012em}
+.sec-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2.5px 8px;border-radius:5px;font-size:11.5px;font-weight:520;background:#F4F4F3;color:var(--muted);border:1px solid var(--line-soft);white-space:nowrap}
+.chip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.chip.ok{background:var(--green-bg);color:var(--green);border-color:#DCE9E0}
+.chip.warn{background:var(--amber-bg);color:var(--amber);border-color:#F0E3C9}
+.chip.bad{background:var(--red-bg);color:var(--red);border-color:#F2DCD8}
+.chip.info{background:var(--blue-bg);color:var(--blue);border-color:#DCE5EE}
+.chip.gold{background:var(--gold-soft);color:#8A6534;border-color:#E5E1D8}
+
+/* Filters */
+.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:20px}
+.filt{display:flex;align-items:center;gap:7px}
+.filt-lab{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+.sel{padding:6.5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--card);font-size:12.5px;font-weight:500;cursor:pointer;min-width:120px}
+.sel:hover{border-color:#D6D6D4}
+.filt-spacer{flex:1}
+.filt-note{font-size:12px;color:var(--muted)}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.kpis+.kpis{border-top:none;border-radius:0 0 var(--r) var(--r)}
+.kpis.top{border-radius:var(--r) var(--r) 0 0}
+.kpi{background:var(--card);padding:16px 18px;display:flex;flex-direction:column;min-height:112px}
+.kpi.click{cursor:pointer;transition:background .13s}
+.kpi.click:hover{background:#FAFAFA}
+.kpi-label{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2);font-weight:600;display:flex;align-items:center;gap:6px}
+.kpi-label svg{width:12px;height:12px;flex-shrink:0;opacity:.6}
+.delta svg{width:12px;height:12px;flex-shrink:0}
+.kpi-val{font-size:27px;font-weight:600;letter-spacing:-.032em;margin-top:9px;font-variant-numeric:tabular-nums;line-height:1}
+.kpi-val .cur{font-size:15px;font-weight:550;color:var(--muted);margin-right:3px}
+.kpi-meta{margin-top:auto;padding-top:10px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kpi-split{display:flex;gap:6px;margin-top:auto;padding-top:11px;flex-wrap:wrap}
+.mini{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);background:#F6F6F5;border:1px solid var(--line-soft);border-radius:5px;padding:2.5px 7px}
+.mini b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.delta{font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
+.delta.up{color:var(--green)}
+.delta.dn{color:var(--red)}
+.bar-split{height:5px;border-radius:3px;background:var(--line-soft);overflow:hidden;display:flex;margin-top:auto}
+.bar-split i{display:block;height:100%}
+@media (max-width:1180px){.kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2);font-weight:600;text-align:left;padding:10px 18px;border-bottom:1px solid var(--line-soft);white-space:nowrap;background:#FCFCFC}
+.tbl td{padding:12px 18px;border-bottom:1px solid var(--line-soft);font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.row-click{cursor:pointer;transition:background .12s}
+.tbl tr.row-click:hover{background:#FAFAFA}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+.who{display:flex;align-items:center;gap:10px}
+.ava{width:30px;height:30px;border-radius:50%;background:var(--gold-soft);color:#8A6534;display:grid;place-items:center;font-size:11px;font-weight:650;flex-shrink:0}
+.ava.dark{background:var(--espresso-3);color:var(--gold)}
+.who-n{font-weight:550;font-size:13px;line-height:1.3}
+.who-s{font-size:11.5px;color:var(--muted);line-height:1.3;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.tnum{font-variant-numeric:tabular-nums}
+.empty{padding:44px 20px;text-align:center;color:var(--muted);font-size:13px}
+.empty b{display:block;color:var(--text);font-weight:600;margin-bottom:5px;font-size:13.5px}
+
+/* Chart */
+.chart-wrap{padding:18px 18px 8px}
+.legend{display:flex;gap:16px;align-items:center}
+.lg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.lg i{width:9px;height:9px;border-radius:2px;display:block}
+.bar-g rect{transition:opacity .13s}
+.bar-g:hover rect{opacity:.82}
+
+/* Layout helpers */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.grid-sb{display:grid;grid-template-columns:1.5fr 1fr;gap:18px}
+@media (max-width:1180px){.grid-2,.grid-3,.grid-sb{grid-template-columns:1fr}}
+.stack{display:flex;flex-direction:column;gap:18px}
+.rowx{display:flex;align-items:center;gap:10px}
+
+/* Insight band */
+.insights{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:20px}
+.ins{background:linear-gradient(180deg,#FFFFFF,#FFF);padding:15px 18px}
+.ins-t{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:7px}
+.ins-t svg{width:14px;height:14px;color:var(--gold);flex-shrink:0}
+.ins-p{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.55}
+@media (max-width:1180px){.insights{grid-template-columns:1fr}}
+
+/* Next booking queue */
+.nb{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line-soft)}
+.nb:last-child{border-bottom:none}
+.nb-time{width:74px;flex-shrink:0}
+.nb-t{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.nb-in{font-size:11px;color:var(--gold);font-weight:600;margin-top:2px}
+.nb-body{flex:1;min-width:0}
+.nb-n{font-size:13px;font-weight:550}
+.nb-s{font-size:12px;color:var(--muted);margin-top:2px}
+.nb-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+/* Drawer */
+.drawer-bg{position:fixed;inset:0;background:rgba(12,12,14,.34);z-index:80;opacity:0;animation:fade .18s forwards}
+@keyframes fade{to{opacity:1}}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:94vw;background:var(--card);z-index:81;display:flex;flex-direction:column;box-shadow:-18px 0 44px rgba(12,12,14,.13);transform:translateX(18px);opacity:0;animation:slidein .2s forwards}
+@keyframes slidein{to{transform:translateX(0);opacity:1}}
+.dr-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.dr-title{font-size:16px;font-weight:600;letter-spacing:-.015em}
+.dr-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.dr-body{flex:1;overflow-y:auto;padding:20px 22px 40px}
+.dr-foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;background:#FCFCFC}
+.x{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:var(--muted);flex-shrink:0}
+.x:hover{background:#F2F2F1;color:var(--text)}
+.x svg{width:15px;height:15px}
+.kv{display:grid;grid-template-columns:132px 1fr;gap:9px 14px;font-size:13px}
+.kv dt{color:var(--muted);font-size:12.5px}
+.kv dd{font-weight:500}
+.dr-sec{margin-top:24px}
+.dr-sec-t{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-2);font-weight:600;margin-bottom:11px}
+
+/* Toast */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--espresso);color:#fff;padding:11px 17px;border-radius:8px;font-size:13px;font-weight:500;z-index:200;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;display:flex;align-items:center;gap:9px;box-shadow:0 8px 26px rgba(12,12,14,.22)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast svg{width:15px;height:15px;color:var(--gold)}
+.dr-ai{display:flex;gap:10px;padding:14px 16px;border-radius:10px;background:var(--gold-soft);border:1px solid #EDE4D3;font-size:13px;line-height:1.6;color:var(--text)}
+.dr-ai svg{width:15px;height:15px;flex-shrink:0;margin-top:3px;color:var(--gold)}
+
+.s-logo{display:grid;place-items:center;background:linear-gradient(135deg,#C9A56E,#F6F1E8);color:#0B0B0C;font-family:var(--serif);font-weight:600;letter-spacing:-.04em;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.s-logo-lg{width:148px;height:148px;border-radius:32px;font-size:84px;margin:0 auto;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.s-logo-md{width:44px;height:44px;border-radius:11px;font-size:26px}
+.s-logo-sm{width:40px;height:40px;border-radius:10px;font-size:22px}
+.brand-line{margin-top:10px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#C9A56E;font-weight:600;line-height:1.35}
+.player audio{width:100%;margin-top:10px}
+</style>
+</head>
+<body>
+<style>
+/* Calls */
+.call-row{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line-soft);cursor:pointer;transition:background .12s}
+.call-row:last-child{border-bottom:none}
+.call-row:hover{background:#FAFAFA}
+.play{width:34px;height:34px;border-radius:50%;background:var(--espresso);color:#fff;display:grid;place-items:center;flex-shrink:0;transition:background .13s}
+.play:hover{background:var(--mocha)}
+.play svg{width:13px;height:13px;margin-left:1px}
+.call-b{flex:1;min-width:0}
+.call-n{font-size:13px;font-weight:600}
+.call-m{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.call-r{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.wave{display:flex;align-items:center;gap:1.6px;height:26px}
+.wave i{width:2.2px;background:#D1D1D6;border-radius:1px;display:block}
+.wave i.on{background:var(--gold)}
+.player{padding:16px 18px;background:#FAFAFA;border:1px solid var(--line);border-radius:9px}
+.pl-top{display:flex;align-items:center;gap:13px}
+.pl-time{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;flex-shrink:0}
+.tx{margin-top:14px;max-height:250px;overflow-y:auto;padding-right:6px}
+.tx-r{display:flex;gap:11px;margin-bottom:11px;font-size:12.8px;line-height:1.55}
+.tx-w{width:52px;flex-shrink:0;font-size:11px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;padding-top:2px}
+.tx-w.a{color:var(--gold)}
+.tx-w.c{color:var(--blue)}
+.tx-t{font-size:10.5px;color:var(--muted-2);font-variant-numeric:tabular-nums;width:38px;flex-shrink:0;padding-top:3px}
+.bucket{margin-top:18px}
+.bucket-h{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.bucket-t{font-size:13px;font-weight:600}
+
+</style>
+
+<!-- ===================== LOGIN ===================== -->
+<div class="login" id="login">
+  <div class="login-art">
+    <div class="la-rings"></div>
+    <div class="la-center">
+      <div class="s-logo s-logo-lg">S</div>
+      <div class="la-rule"></div>
+      <div class="la-tag">Employee Support Line</div>
+    </div>
+  </div>
+  <div class="login-form">
+    <div class="lf-inner">
+      <div class="s-logo s-logo-sm">S</div>
+      <h2 class="lf-h">Sign in</h2>
+      <p class="lf-sub">Use your work account to open the console.</p>
+      <div class="lf-field">
+        <label class="lf-lab" for="lgUser">Work email</label>
+        <input class="lf-in" id="lgUser" type="email" value="reem@company.ae" autocomplete="username">
+      </div>
+      <div class="lf-field">
+        <label class="lf-lab" for="lgPass">Password</label>
+        <input class="lf-in" id="lgPass" type="password" value="••••••••••" autocomplete="current-password">
+      </div>
+      <div class="lf-row">
+        <label class="lf-check"><input type="checkbox" checked> Keep me signed in</label>
+        <a href="#" onclick="return false">Forgot password</a>
+      </div>
+      <button class="lf-btn" onclick="doLogin()">Sign in</button>
+      <div class="lf-div">or continue with</div>
+      <div class="sso">
+        <button class="sso-btn" onclick="doLogin('Microsoft')">
+          <svg viewBox="0 0 23 23" fill="none"><path fill="#F25022" d="M1 1h10v10H1z"/><path fill="#7FBA00" d="M12 1h10v10H12z"/><path fill="#00A4EF" d="M1 12h10v10H1z"/><path fill="#FFB900" d="M12 12h10v10H12z"/></svg>
+          Continue with Microsoft
+        </button>
+        <button class="sso-btn" onclick="doLogin('Google')">
+          <svg viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.8-.4-4H24v7.6h12.1c-.2 2-1.6 5-4.5 7l6.9 5.3c4.1-3.8 6.6-9.4 6.6-15.9z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.3c-1.9 1.3-4.4 2.2-7.6 2.2-5.8 0-10.7-3.8-12.5-9.1l-7.1 5.5C8.1 41.1 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.5 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.7-4.5l-7.1-5.5C2.8 17 2 20.4 2 24s.8 7 2.3 10l7.2-5.5z"/><path fill="#EA4335" d="M24 10.6c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 4.4 29.9 2 24 2 15.4 2 8.1 6.9 4.3 14l7.1 5.5c1.9-5.3 6.8-8.9 12.6-8.9z"/></svg>
+          Continue with Google
+        </button>
+      </div>
+      <p class="lf-foot">Sobha employee support line. Live calls from the voice agent appear under Calls.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="s-logo s-logo-md">S</div><div class="brand-line">Employee Support Line</div>
+  </div>
+  <nav class="nav" id="nav"></nav>
+  <div class="sidebar-foot">
+    <div class="user">
+      <div class="avatar">RA</div>
+      <div><div class="user-name">Reem Al Habtoor</div><div class="user-role">Operations Manager</div></div>
+    </div>
+  </div>
+</aside>
+<main class="main">
+  <header class="topbar">
+    <div><h1 class="page-title" id="pgTitle">Dashboard</h1><p class="page-sub" id="pgSub"></p></div>
+    <div class="topbar-actions" id="pgActions"></div>
+  </header>
+  <div class="content" id="content"></div>
+</main>
+<div id="drawerHost"></div>
+<div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span id="toastTxt"></span></div>
+<script>
+/* ============================================================
+   TASH AI CONSOLE — demo data layer (simulated, deterministic)
+   ============================================================ */
+const TODAY = new Date();
+
+function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const pad = n => String(n).padStart(2,'0');
+const dkey = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const fmtD = d => DAY[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()];
+const fmtDS = d => d.getDate()+' '+MON[d.getMonth()];
+const fmtT = m => pad(Math.floor(m/60))+':'+pad(m%60);
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const daysBetween=(a,b)=>Math.round((b-a)/86400000);
+
+/* ================= Voice agent: employee support data ================= */
+const DEPTS=['HR','IT','Finance','Operations','Facilities'];
+const VR = rng(20260918);
+const vpick = a => a[Math.floor(VR()*a.length)];
+const vri = (a,b) => a+Math.floor(VR()*(b-a+1));
+const vpickW = (arr,w)=>{let s=w.reduce((a,b)=>a+b,0),r=VR()*s;for(let i=0;i<arr.length;i++){r-=w[i];if(r<=0)return arr[i]}return arr[arr.length-1]};
+
+const EMP_NAMES=['Omar Al Suwaidi','Priya Nair','Daniel Fernandes','Hessa Al Ketbi','Rahul Menon','Maria Santos','Khalid Al Mansoori','Aisha Siddiqui','James Whitfield','Noura Al Shamsi','Arjun Pillai','Fatima Zahra','Yousef Haddad','Grace Okafor','Salem Al Nuaimi','Lina Barakat','Vikram Rao','Sara Al Hammadi','Joseph Mathew','Mariam Al Falasi','Ahmed Rashid','Chloe Martin','Imran Qureshi','Reem Al Zaabi','Anil Kumar','Dana Khoury','Hamad Al Dhaheri','Neha Sharma','Tariq Aziz','Latifa Al Mazrouei','Samuel Addo','Rania Saleh','Faisal Al Bloushi','Anjali Desai','Ibrahim Nasser','Elena Petrova','Majid Al Qassimi','Shreya Iyer','Walid Mansour','Meera Krishnan','Hassan Al Amiri','Joanna Silva','Nasser Al Kaabi','Pooja Verma','Karim Farouk','Amna Al Mehairi','Ravi Shankar','Leila Haddad'];
+const EMPS = EMP_NAMES.map((name,i)=>({
+  id:'EMP-'+(10240+i*37), name, dept:DEPTS[i%DEPTS.length],
+  phone:'+971 5'+vpick(['0','2','5','6'])+' '+vri(100,999)+' '+vri(1000,9999)
+}));
+const empById = id => EMPS.find(e=>e.id===id);
+
+/* issue catalogue: r = resolve chance, team = where escalations go */
+const ISSUES={
+ Operations:[
+  {t:'Missed staff bus',say:'I missed the staff bus this morning. My name is ready, bus number and stop as well.',fix:'contacted the driver and confirmed the bus was running late with an ETA',r:.55,team:'Transport Desk'},
+  {t:'Driver missed pickup',say:'The driver did not stop at my pickup point. I am still waiting.',fix:'registered a missed-pickup complaint and arranged alternative transport',r:.2,team:'Transport Desk'},
+  {t:'Driver unreachable',say:'Nobody is answering from the bus. I cannot reach the driver.',fix:'tried the driver and escalated to the transport desk',r:.1,team:'Transport Desk'},
+  {t:'Bus running late',say:'The staff bus is late and I need an updated ETA.',fix:'checked the live schedule and shared a revised pickup time',r:.7,team:'Transport Desk'}],
+ Facilities:[
+  {t:'AC not working',say:'The air conditioning in my villa is not cooling.',fix:'logged a maintenance ticket in the facility system',r:.15,team:'Maintenance'},
+  {t:'Plumbing leak',say:'There is a leak in the kitchen of my unit.',fix:'raised a plumbing ticket with medium priority',r:.15,team:'Maintenance'},
+  {t:'Electrical fault',say:'Power sockets on one wall stopped working.',fix:'created an electrical ticket for the on-duty technician',r:.15,team:'Maintenance'},
+  {t:'Access card not working',say:'My community access card is not opening the gate.',fix:'re-activated the access card with security',r:.8,team:'Security'}],
+ HR:[
+  {t:'Ticket status lookup',say:'I want to check the status of an existing transport ticket.',fix:'looked up the ticket and read back the latest status',r:.9,team:'Transport Desk'}],
+ IT:[
+  {t:'Staff app login issue',say:'I cannot open the Sobha staff transport app on my phone.',fix:'walked the employee through signing in again',r:.65,team:'IT Service Desk'}],
+ Finance:[
+  {t:'Transport allowance query',say:'My transport allowance looks wrong this month.',fix:'explained the allowance rule and noted a payroll check if needed',r:.4,team:'Payroll'}]
+};
+
+const TK_STATUS=['Open','In progress','Resolved'];
+const VCALLS=[]; let VN=0, TN=4800;
+const vStart=new Date(2025,0,1);
+for(let d=new Date(vStart); d<=TODAY; d=addDays(d,1)){
+  const day=new Date(d); day.setHours(0,0,0,0);
+  const wk=day.getDay(), base=(wk===0||wk===6)?vri(1,4):vri(7,14);
+  for(let i=0;i<base;i++){
+    const e=vpick(EMPS), iss=vpick(ISSUES[e.dept]), ok=VR()<iss.r;
+    let at=vri(450,1170); if(dkey(day)===dkey(TODAY)&&at>TODAY.getHours()*60+TODAY.getMinutes()) at=vri(450,TODAY.getHours()*60);
+    const age=daysBetween(day,TODAY);
+    VCALLS.push({id:'VC-'+(1000+(++VN)), date:new Date(day), at, emp:e.id, dept:e.dept,
+      issue:iss, outcome:ok?'resolved':'escalated',
+      dur:ok?vri(70,240):vri(120,330),
+      sentiment:ok?vpickW(['Positive','Neutral','Negative'],[70,26,4]):vpickW(['Positive','Neutral','Negative'],[30,50,20]),
+      ticket:ok?null:{id:'TK-'+(++TN), priority:vpickW(['High','Medium','Low'],[25,55,20]),
+        status:age<2?'Open':age<6?vpickW(TK_STATUS,[30,50,20]):vpickW(TK_STATUS,[5,15,80])},
+      seed:vri(1,999)});
+  }
+}
+VCALLS.sort((a,b)=>(b.date-a.date)||(b.at-a.at));
+const API_BASE=(window.SOBHA_API_BASE||'').replace(/\/$/,'');
+function liveToCall(r){
+  const created=new Date(r.created_at);
+  const at=created.getHours()*60+created.getMinutes();
+  const emp={id:r.caller_id||r.id,name:r.caller_name||'Caller',dept:r.dept||'Operations',phone:r.phone||''};
+  if(!EMPS.find(e=>e.id===emp.id)) EMPS.push(emp);
+  const issue={t:r.issue||'Live call',say:'',fix:'handled the request on the Sobha agent',r:.5,team:r.assigned_to||'Transport Desk'};
+  const ticket=r.ticket_id?{id:r.ticket_id,priority:r.ticket_priority||'Medium',status:r.ticket_status||'Open'}:null;
+  return {id:r.id,date:created,at,emp:emp.id,dept:emp.dept,issue,outcome:r.outcome||'resolved',dur:Math.round(r.duration_sec||0),sentiment:r.sentiment||'Neutral',ticket,seed:r.id.length,turns:r.turns||[],summary:r.summary||'',audioUrl:r.audio_url||null,live:!!r.live};
+}
+async function loadLiveCalls(){
+  try{
+    const res=await fetch(API_BASE+'/api/calls');
+    if(!res.ok) return;
+    const rows=await res.json();
+    const mapped=(rows.calls||rows).map(liveToCall);
+    const ids=new Set(mapped.map(c=>c.id));
+    for(let i=VCALLS.length-1;i>=0;i--) if(ids.has(VCALLS[i].id)) VCALLS.splice(i,1);
+    VCALLS.unshift(...mapped);
+    VCALLS.sort((a,b)=>(b.date-a.date)||(b.at-a.at));
+    if(typeof go==='function') go(PAGE);
+  }catch(e){ console.warn('live calls', e); }
+}
+
+
+function vcalls(p){p=p||period();return VCALLS.filter(c=>inC(c)&&inP(c.date,p))}
+
+/* transcript + summary built on demand */
+function vTranscript(c){
+  if(c.turns && c.turns.length){
+    return c.turns.map(r=>({t:r.t || fmtTurn(r.t_sec||0), who:r.who, x:r.text||r.x}));
+  }
+  const e=empById(c.emp), iss=c.issue, first=e.name.split(' ')[0];
+  const L=[['AGENT','Thank you for reaching Sobha agent. Which language do you prefer? We support Hindi, English, Malayalam, and Arabic.'],
+    ['CALLER','English please. This is '+e.name+', employee ID '+e.id+'.'],
+    ['AGENT','Do you want to check the status of an existing request, or file a new one?'],
+    ['CALLER',iss.say],
+    ['AGENT','I will contact the bus driver right away. Please hold on for a moment.']];
+  if(c.outcome==='resolved'){
+    if(iss.t.indexOf('Missed')>=0 || iss.t.indexOf('late')>=0){
+      L.push(['AGENT','I checked, it seems the bus is late. It will pick you up in '+(6+c.seed%10)+' minutes.'],['CALLER','Thank you.'],['AGENT','Is there anything else I can help you with today?']);
+    } else {
+      L.push(['AGENT','All done. I have '+iss.fix+'.'],['CALLER','Perfect, that sorts it.'],['AGENT','Thank you for calling Sobha. Have a great day.']);
+    }
+  }else{
+    const tid=c.ticket?c.ticket.id:'TR-0000';
+    if(iss.t.indexOf('unreachable')>=0 || iss.t.indexOf('Driver unreachable')>=0){
+      L.push(['AGENT','I tried calling the driver, but they are not available. I have raised complaint '+tid+', and someone from the transport desk will be in touch immediately.']);
+    } else if(iss.t.indexOf('missed pickup')>=0 || iss.t.indexOf('Driver missed')>=0){
+      L.push(['AGENT','Sorry, they missed your pickup. A complaint has been registered as '+tid+', and I have arranged someone to pick you up shortly.']);
+    } else {
+      L.push(['AGENT','I have '+iss.fix+'. Ticket '+tid+' was raised with '+(c.ticket?c.ticket.priority.toLowerCase():'medium')+' priority for '+iss.team+'.']);
+    }
+    L.push(['CALLER','Okay, thank you.'],['AGENT','Is there anything else I can help you with today?']);
+  }
+  const step=c.dur/L.length;
+  return L.map((l,i)=>({t:pad(Math.floor(i*step/60))+':'+pad(Math.floor(i*step%60)),who:l[0],x:l[1]}));
+}
+function fmtTurn(sec){sec=Math.max(0,Math.floor(sec||0));return pad(Math.floor(sec/60))+':'+pad(sec%60)}
+function vSummary(c){
+  const e=empById(c.emp), iss=c.issue;
+  if(c.summary) return c.summary;
+  let s=e.name+' from '+e.dept+' called the Sobha employee support line about “'+iss.t+'”. The agent offered Hindi, English, Malayalam and Arabic, then collected name or employee ID, bus number and stop where needed. ';
+  s+=c.outcome==='resolved'
+    ? 'The agent '+iss.fix+', and the caller confirmed the issue was sorted during the call.'
+    : 'The agent '+iss.fix+'. Ticket '+(c.ticket?c.ticket.id:'')+' was raised with '+(c.ticket?c.ticket.priority.toLowerCase():'medium')+' priority for '+iss.team+'.';
+  return s;
+}
+</script>
+<script>
+/* ============================ CORE ============================ */
+const ICO={
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  chat:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.8-.9L3 20.5l1.6-4.8A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+  cal:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/>',
+  cog:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.6a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4z"/>',
+  play:'<polygon points="6 3 20 12 6 21 6 3"/>',
+  pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  send:'<path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  up:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+  dn:'<path d="M12 5v14M19 12l-7 7-7-7"/>',
+  ext:'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14 21 3"/>',
+  db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  rep:'<path d="M3 2v6h6"/><path d="M3.5 13a9 9 0 1 0 2.1-5.6L3 8"/>'
+};
+const icon=(k,cls)=>`<svg class="${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICO[k]}</svg>`;
+
+const NAVS=[
+  {k:'dash',  label:'Dashboard', ico:'grid',  title:'Dashboard', sub:'Live view of every employee call the agent handles'},
+  {k:'calls', label:'Calls',     ico:'phone', title:'Voice agent', sub:'Every call answered, with recording, transcript and outcome'}
+];
+
+let PAGE='dash';
+const F={dept:'all', year:String(TODAY.getFullYear()), month:pad(TODAY.getMonth()+1)};
+
+/* ---------- period ---------- */
+function period(){
+  const y=+F.year, m=+F.month;
+  const start=new Date(y,m-1,1);
+  let end=new Date(y,m,0); end.setHours(0,0,0,0);
+  const t=new Date(TODAY); t.setHours(0,0,0,0);
+  if(end>t) end=t;
+  return {start,end};
+}
+function prevPeriod(){
+  const p=period(); const len=daysBetween(p.start,p.end)+1;
+  return {start:addDays(p.start,-len), end:addDays(p.start,-1)};
+}
+const inP=(d,p)=>{const x=new Date(d);x.setHours(0,0,0,0);return x>=p.start&&x<=p.end};
+const inC=o=>F.dept==='all'||o.dept===F.dept;
+/* ---------- shell ---------- */
+function doLogin(via){
+  document.getElementById('login').style.display='none';
+  go('dash');
+  if(via) toast('Signed in with '+via);
+}
+function renderNav(){
+  document.getElementById('nav').innerHTML =
+    '<div class="nav-label">Overview</div>'+NAVS.map(navBtn).join('');
+}
+function navBtn(n){
+  let count='';
+  if(n.k==='calls') count=VCALLS.filter(c=>dkey(c.date)===dkey(TODAY)).length;
+  return `<button class="nav-item${PAGE===n.k?' active':''}" onclick="go('${n.k}')">${icon(n.ico,'nav-ico')}<span>${n.label}</span>${count?`<span class="nav-count">${count}</span>`:''}</button>`;
+}
+function go(k){
+  PAGE=k; const n=NAVS.find(x=>x.k===k);
+  document.getElementById('pgTitle').textContent=n.title;
+  document.getElementById('pgSub').textContent=n.sub;
+  document.getElementById('pgActions').innerHTML=actionsFor(k);
+  renderNav();
+  const c=document.getElementById('content');
+  c.innerHTML = ({dash:pgDash,calls:pgCalls})[k]();
+  c.scrollTop=0; document.querySelector('.main').scrollTop=0;
+}
+function actionsFor(k){
+  const sync=`<span class="chip ok"><span class="chip-dot" style="background:var(--green)"></span>Agent connected</span>`;
+  return k==='dash'?sync+`<button class="btn btn-sm" onclick="toast('Report exported')">${icon('ext')}Export</button>`:sync;
+}
+function toast(m){
+  const t=document.getElementById('toast');
+  document.getElementById('toastTxt').textContent=m;
+  t.classList.add('on'); clearTimeout(window._tt);
+  window._tt=setTimeout(()=>t.classList.remove('on'),2600);
+}
+
+/* ---------- filters ---------- */
+function filterBar(){
+  const p=period();
+  const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const maxM=+F.year===TODAY.getFullYear()?TODAY.getMonth()+1:12;
+  const opt=(v,l,cur)=>`<option value="${v}"${cur===v?' selected':''}>${l}</option>`;
+  return `<div class="filters">
+    <div class="filt"><span class="filt-lab">Department</span>
+      <select class="sel" onchange="setF('dept',this.value)">
+        ${opt('all','All departments',F.dept)}${DEPTS.map(d=>opt(d,d,F.dept)).join('')}
+      </select></div>
+    <div class="filt"><span class="filt-lab">Year</span>
+      <select class="sel" onchange="setF('year',this.value)">
+        ${['2026','2025'].map(y=>opt(y,y,F.year)).join('')}
+      </select></div>
+    <div class="filt"><span class="filt-lab">Month</span>
+      <select class="sel" onchange="setF('month',this.value)">
+        ${MN.slice(0,maxM).map((n,i)=>opt(pad(i+1),n,F.month)).join('')}
+      </select></div>
+    <div class="filt-spacer"></div>
+    <span class="filt-note">${fmtD(p.start)} to ${fmtD(p.end)} &middot; ${F.dept==='all'?'All departments':F.dept}</span>
+  </div>`;
+}
+function setF(k,v){F[k]=v;if(k==='year'&&+v===TODAY.getFullYear()&&+F.month>TODAY.getMonth()+1)F.month=pad(TODAY.getMonth()+1);go(PAGE)}
+
+/* ---------- drawer ---------- */
+function drawer(title,sub,body,foot){
+  document.getElementById('drawerHost').innerHTML=
+   `<div class="drawer-bg" onclick="closeDrawer()"></div>
+    <aside class="drawer" role="dialog" aria-modal="true">
+      <div class="dr-head"><div><div class="dr-title">${title}</div><div class="dr-sub">${sub}</div></div>
+        <button class="x" onclick="closeDrawer()" aria-label="Close">${icon('x')}</button></div>
+      <div class="dr-body">${body}</div>
+      ${foot?`<div class="dr-foot">${foot}</div>`:''}
+    </aside>`;
+}
+function closeDrawer(){document.getElementById('drawerHost').innerHTML=''}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+const kvList=rows=>`<dl class="kv">${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl>`;
+</script>
+<script>
+/* ============================ DASHBOARD ============================ */
+function deltaTag(cur,prev){
+  if(!prev) return '';
+  const d=Math.round((cur-prev)/prev*100);
+  if(d===0) return `<span class="delta">No change</span>`;
+  return `<span class="delta ${d>0?'up':'dn'}">${icon(d>0?'up':'dn')}${Math.abs(d)}% vs previous</span>`;
+}
+function kpiCard(o){
+  return `<div class="kpi${o.onclick?' click':''}"${o.onclick?` onclick="${o.onclick}" tabindex="0"`:''}>
+    <div class="kpi-label">${o.label}${o.onclick?icon('ext'):''}</div>
+    <div class="kpi-val">${o.cur?`<span class="cur">${o.cur}</span>`:''}${o.val}</div>
+    ${o.foot||''}
+  </div>`;
+}
+function dayBuckets(p){
+  const out=[]; const n=daysBetween(p.start,p.end); const cs=vcalls(p);
+  for(let i=0;i<=n;i++){
+    const d=addDays(p.start,i); d.setHours(0,0,0,0); const k=dkey(d);
+    const rows=cs.filter(c=>dkey(c.date)===k);
+    out.push({date:d, wa:rows.filter(r=>r.outcome==='escalated').length, vo:rows.filter(r=>r.outcome==='resolved').length});
+  }
+  return out;
+}
+const fmtDur=sec=>Math.floor(sec/60)+':'+pad(Math.round(sec%60));
+function chartStacked(days){
+  const W=940,H=280,PL=42,PR=14,PT=24,PB=38;
+  const iw=W-PL-PR, ih=H-PT-PB;
+  const max=Math.max(6,...days.map(d=>d.wa+d.vo));
+  const top=Math.ceil(max/4)*4;
+  const slot=iw/days.length;
+  const bw=Math.min(34,slot*0.56);
+  const y=v=>PT+ih-(v/top)*ih;
+  let g='';
+  for(let i=0;i<=4;i++){
+    const v=top/4*i, yy=y(v);
+    g+=`<line x1="${PL}" x2="${W-PR}" y1="${yy}" y2="${yy}" stroke="${i?'#F1F1EF':'#E7E7E5'}" stroke-width="1"/>
+        <text x="${PL-9}" y="${yy+4}" text-anchor="end" font-size="10.5" fill="#A1A1A6">${v}</text>`;
+  }
+  const step=days.length>34?Math.ceil(days.length/12):(days.length>16?2:1);
+  days.forEach((d,i)=>{
+    const cx=PL+slot*i+slot/2, x=cx-bw/2;
+    const hv=(d.vo/top)*ih, hw=(d.wa/top)*ih;
+    const yv=y(d.vo), yw=y(d.vo+d.wa);
+    const tot=d.wa+d.vo;
+    g+=`<g class="bar-g"><title>${fmtD(d.date)}: ${tot} calls, ${d.vo} resolved, ${d.wa} escalated</title>`;
+    if(d.vo) g+=`<rect x="${x}" y="${yv}" width="${bw}" height="${Math.max(2,hv)}" fill="#5E8B6B" rx="${d.wa?0:3}"/>`;
+    if(d.wa) g+=`<rect x="${x}" y="${yw}" width="${bw}" height="${Math.max(2,hw)}" fill="#D4A15A" rx="3"/>`;
+    if(!d.wa&&!d.vo) g+=`<rect x="${x}" y="${PT+ih-2}" width="${bw}" height="2" fill="#E7E7E5"/>`;
+    if(tot) g+=`<text x="${cx}" y="${yw-7}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1D1D1F">${tot}</text>`;
+    if(bw>=18){
+      if(d.wa&&hw>=15) g+=`<text x="${cx}" y="${yw+hw/2+4}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#FFFFFF">${d.wa}</text>`;
+      if(d.vo&&hv>=15) g+=`<text x="${cx}" y="${yv+hv/2+4}" text-anchor="middle" font-size="10.5" font-weight="600" fill="#FFFFFF">${d.vo}</text>`;
+    }
+    g+=`</g>`;
+    if(i%step===0) g+=`<text x="${cx}" y="${H-16}" text-anchor="middle" font-size="10.5" fill="#A1A1A6">${d.date.getDate()} ${MON[d.date.getMonth()]}</text>`;
+    if(i%step===0&&days.length<=16) g+=`<text x="${cx}" y="${H-3}" text-anchor="middle" font-size="9.5" fill="#C7C7CC">${DAY[d.date.getDay()]}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Calls per day, resolved and escalated">${g}</svg>`;
+}
+
+function pgDash(){
+  const p=period(), pp=prevPeriod();
+  const c=vcalls(p), cPrev=vcalls(pp);
+  const res=c.filter(x=>x.outcome==='resolved'), esc=c.filter(x=>x.outcome==='escalated');
+  const resPrev=cPrev.filter(x=>x.outcome==='resolved').length, escPrev=cPrev.length-resPrev;
+  const rate=c.length?Math.round(res.length/c.length*100):0;
+  const avg=c.length?c.reduce((a,x)=>a+x.dur,0)/c.length:0, avgPrev=cPrev.length?cPrev.reduce((a,x)=>a+x.dur,0)/cPrev.length:0;
+  const openT=esc.filter(x=>x.ticket.status!=='Resolved'), highOpen=openT.filter(x=>x.ticket.priority==='High').length;
+  const days=dayBuckets(p);
+  const today=VCALLS.filter(x=>inC(x)&&dkey(x.date)===dkey(TODAY)).length;
+
+  /* insights */
+  const cnt=(arr,f)=>{const o={};arr.forEach(x=>{const k=f(x);o[k]=(o[k]||0)+1});return Object.entries(o).sort((a,b)=>b[1]-a[1])};
+  const topEsc=cnt(esc,x=>x.issue.t)[0]||['None',0];
+  const topEscTeam=(esc.find(x=>x.issue.t===topEsc[0])||{issue:{team:'the owning team'}}).issue.team;
+  const deptRows=cnt(c,x=>x.dept).map(([d,n])=>{const r=c.filter(x=>x.dept===d&&x.outcome==='resolved').length;return {d,n,rate:Math.round(r/n*100)}});
+  const busiest=deptRows[0]||{d:'n/a',n:0,rate:0};
+  const weakest=deptRows.slice().sort((a,b)=>a.rate-b.rate)[0]||busiest;
+
+  return `<div class="welcome">
+    <div class="welcome-h">Welcome, Reem</div>
+    <p class="welcome-p">${fmtD(TODAY)} ${TODAY.getFullYear()} &middot; ${today} calls handled today &middot; The voice agent is answering the employee support line</p>
+  </div>`+filterBar()+`
+
+  <div class="kpis top">
+    ${kpiCard({label:'Total calls',val:c.length,onclick:"go('calls')",foot:`<div class="kpi-meta">${deltaTag(c.length,cPrev.length)||'<span class="mini">100% answered by the agent</span>'}</div>`})}
+    ${kpiCard({label:'Complaints resolved',val:res.length,onclick:"go('calls')",foot:`<div class="kpi-meta"><span class="mini"><b>${rate}%</b> resolved on the call</span>${deltaTag(res.length,resPrev)}</div>`})}
+    ${kpiCard({label:'Escalated complaints',val:esc.length,onclick:"go('calls')",foot:`<div class="kpi-meta"><span class="mini"><b>${esc.length}</b> tickets raised</span><span class="mini"><b>${openT.length}</b> still open</span></div>`})}
+    ${kpiCard({label:'Average call',val:fmtDur(avg),foot:`<div class="kpi-meta">${deltaTag(Math.round(avg),Math.round(avgPrev))||'<span class="mini">per call</span>'}</div>`})}
+  </div>
+
+  <div class="insights">
+    <div class="ins"><div class="ins-t">${icon('alert')}${topEsc[0]} drives most escalations</div>
+      <p class="ins-p">${topEsc[1]} of ${esc.length} tickets this period were about ${topEsc[0].toLowerCase()}, all routed to ${topEscTeam}. A short self-service guide or a direct system check for the agent would let more of these close on the call.</p></div>
+    <div class="ins"><div class="ins-t">${icon('bolt')}${weakest.d} has the lowest resolution rate</div>
+      <p class="ins-p">Only ${weakest.rate}% of ${weakest.d} calls were closed on the line, against ${rate}% overall. ${busiest.d} is the busiest department with ${busiest.n} calls. Giving the agent more ${weakest.d} knowledge is the quickest win.</p></div>
+    <div class="ins"><div class="ins-t">${icon('clock')}${openT.length} tickets still waiting</div>
+      <p class="ins-p">${highOpen} of them are high priority. Clearing these first will cut repeat calls on the same issues. The agent answered all ${c.length} calls, with none missed.</p></div>
+  </div>
+
+  <div class="sec-head"><div><div class="sec-title">Calls per day</div><div class="sec-sub">Total calls, split into complaints resolved and escalated</div></div>
+    <div class="legend"><span class="lg"><i style="background:#5E8B6B"></i>Resolved</span><span class="lg"><i style="background:#D4A15A"></i>Escalated</span></div></div>
+  <div class="card"><div class="chart-wrap">${chartStacked(days)}</div>
+    <div style="padding:10px 18px 14px;border-top:1px solid var(--line-soft);display:flex;gap:18px;flex-wrap:wrap">
+      <span class="filt-note">Peak day ${(()=>{const m=days.slice().sort((a,b)=>(b.wa+b.vo)-(a.wa+a.vo))[0];return m?fmtD(m.date)+' with '+(m.wa+m.vo):'n/a'})()} calls</span>
+      <span class="filt-note">Daily average ${(c.length/Math.max(1,days.length)).toFixed(1)}</span>
+      <span class="filt-note">Resolution rate ${rate}%</span>
+    </div></div>
+  `;
+}
+</script>
+<script>
+/* ============================ CALLS ============================ */
+const secs=s=>Math.floor(s/60)+':'+pad(s%60);
+function pgCalls(){
+  const p=period(), rows=vcalls(p);
+  const res=rows.filter(r=>r.outcome==='resolved'), esc=rows.filter(r=>r.outcome==='escalated');
+  const avg=rows.length?Math.round(rows.reduce((a,r)=>a+r.dur,0)/rows.length):0;
+  const pct=n=>rows.length?Math.round(n/rows.length*100):0;
+  const open=esc.filter(r=>r.ticket.status!=='Resolved').length;
+  return filterBar()+`
+  <div class="kpis top">
+    ${kpiCard({label:'Total calls',val:rows.length,foot:`<div class="kpi-meta"><span class="mini">100% picked up on the first ring</span></div>`})}
+    ${kpiCard({label:'Complaints resolved',val:res.length,foot:`<div class="kpi-meta"><span class="mini"><b>${pct(res.length)}%</b> of calls</span></div>`})}
+    ${kpiCard({label:'Complaints escalated',val:esc.length,foot:`<div class="kpi-meta"><span class="mini"><b>${pct(esc.length)}%</b> of calls</span><span class="mini"><b>${open}</b> tickets open</span></div>`})}
+    ${kpiCard({label:'Average call',val:secs(avg),foot:`<div class="kpi-meta"><span class="mini">per call</span></div>`})}
+  </div>
+  ${callBucket('Complaints Resolved',res,'ok',`${pct(res.length)}% closed on the call`)}
+  ${callBucket('Escalated Complaints',esc,'warn',`${esc.length} tickets raised &middot; ${open} open`)}`;
+}
+function callBucket(title,rows,chip,note){
+  return `<div class="bucket">
+    <div class="bucket-h"><span class="bucket-t">${title}</span><span class="chip ${chip}">${rows.length}</span>
+      ${rows.length?`<span class="filt-note">${note}</span>`:''}</div>
+    <div class="card">${rows.length?rows.slice(0,8).map(callRow).join(''):`<div class="empty"><b>None</b>No calls in this group for the selected period.</div>`}
+    ${rows.length>8?`<div style="padding:11px 18px;border-top:1px solid var(--line-soft)"><span class="filt-note">Showing 8 of ${rows.length}</span></div>`:''}</div></div>`;
+}
+const stChip=s=>s==='Resolved'?'ok':(s==='Open'?'warn':'info');
+const sentChip=s=>s==='Negative'?'bad':(s==='Positive'?'ok':'');
+function callRow(c){
+  const e=empById(c.emp);
+  return `<div class="call-row" onclick="callDrawer('${c.id}')">
+    <button class="play" onclick="event.stopPropagation();callDrawer('${c.id}',1)" aria-label="Play recording">${icon('play')}</button>
+    <div class="call-b">
+      <div class="call-n">${e.name} <span class="muted" style="font-weight:400">&middot; ${e.id} &middot; ${e.phone}</span></div>
+      <div class="call-m"><span>${fmtDS(c.date)}, ${fmtT(c.at)}</span><span>&middot;</span><span>${secs(c.dur)}</span><span>&middot;</span><span>${c.issue.t}</span></div>
+    </div>
+    <div class="wave" aria-hidden="true">${waveBars(c.seed,26,0)}</div>
+    <div class="call-r"><span class="chip">${e.dept}</span>
+      ${c.ticket?`<span class="tnum" style="font-weight:600">${c.ticket.id}</span><span class="chip ${stChip(c.ticket.status)}">${c.ticket.status}</span>`:''}
+      <span class="chip ${sentChip(c.sentiment)}">${c.sentiment}</span></div>
+  </div>`;
+}
+function waveBars(seed,n,prog){
+  const r=rng(seed); let h='';
+  for(let i=0;i<n;i++){
+    const v=6+Math.floor(r()*20);
+    h+=`<i class="${(i/n)<prog?'on':''}" style="height:${v}px"></i>`;
+  }
+  return h;
+}
+let PL={id:null,t:0,timer:null};
+function callDrawer(id,autoplay){
+  const c=VCALLS.find(x=>x.id===id); if(!c)return;
+  const e=empById(c.emp), T=c.ticket;
+  PL={id,t:0,timer:null};
+  const det=[['Name',e.name],['Phone',e.phone],['Employee ID',e.id],['Department',e.dept]];
+  if(T) det.push(['Ticket ID',T.id],['Status',`<span class="chip ${stChip(T.status)}">${T.status}</span>`],['Priority',T.priority],['Assigned to',c.issue.team]);
+  drawer(e.name,`${c.id} &middot; ${fmtD(c.date)} at ${fmtT(c.at)} &middot; ${secs(c.dur)}`,
+   `<div class="rowx" style="margin-bottom:18px"><span class="chip ${T?'warn':'ok'}">${T?'Escalated':'Resolved on call'}</span>
+      <span class="chip">${c.issue.t}</span>
+      <span class="chip ${sentChip(c.sentiment)}">${c.sentiment}</span></div>
+
+    <div class="player">
+      ${c.audioUrl?`<audio controls src="${c.audioUrl}" preload="metadata"></audio>`:''}
+      <div class="pl-top">
+        <button class="play" id="plBtn" onclick="plToggle()">${icon('play')}</button>
+        <div class="wave" id="plWave" style="flex:1;height:34px">${waveBars(c.seed,64,0)}</div>
+        <span class="pl-time" id="plTime">0:00 / ${secs(c.dur)}</span>
+      </div>
+      <div class="tx">${vTranscript(c).map(r=>`<div class="tx-r"><span class="tx-t">${r.t}</span><span class="tx-w ${r.who==='AGENT'?'a':'c'}">${r.who==='AGENT'?'Agent':'Caller'}</span><span>${r.x}</span></div>`).join('')}</div>
+    </div>
+
+    <div class="dr-sec"><div class="dr-sec-t">Caller details</div>${kvList(det)}</div>
+
+    <div class="dr-sec"><div class="dr-sec-t">AI summary</div>
+      <div class="dr-ai">${icon('spark')}<p>${vSummary(c)}</p></div></div>`,
+   `<button class="btn" onclick="closeDrawer()">Close</button>
+    <button class="btn btn-sm" onclick="dlTranscript('${c.id}')">Download transcript</button>
+    ${T?`<button class="btn btn-primary" onclick="closeDrawer();toast('Opened ${T.id}')">Open ticket</button>`:''}`);
+  if(autoplay) setTimeout(plToggle,220);
+}
+function dlTranscript(id){
+  const c=VCALLS.find(x=>x.id===id), e=empById(c.emp);
+  const txt=`${c.id} | ${e.name} | ${e.id} | ${e.dept}\n${fmtD(c.date)} ${fmtT(c.at)}\n\n`+vTranscript(c).map(r=>`[${r.t}] ${r.who}: ${r.x}`).join('\n')+`\n\nSummary: ${vSummary(c)}\n`;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download=c.id+'_transcript.txt'; a.click();
+  toast('Transcript downloaded');
+}
+function plToggle(){
+  const c=VCALLS.find(x=>x.id===PL.id); if(!c)return;
+  const btn=document.getElementById('plBtn'); if(!btn)return;
+  if(PL.timer){clearInterval(PL.timer);PL.timer=null;btn.innerHTML=icon('play');return}
+  btn.innerHTML=icon('pause');
+  PL.timer=setInterval(()=>{
+    PL.t+=1.4;
+    const w=document.getElementById('plWave'), t=document.getElementById('plTime');
+    if(!w){clearInterval(PL.timer);PL.timer=null;return}
+    if(PL.t>=c.dur){PL.t=c.dur;clearInterval(PL.timer);PL.timer=null;const b=document.getElementById('plBtn');if(b)b.innerHTML=icon('play')}
+    w.innerHTML=waveBars(c.seed,64,PL.t/c.dur);
+    t.textContent=secs(Math.floor(PL.t))+' / '+secs(c.dur);
+  },140);
+}
+</script>
+<script>
+/* ============================ BOOT ============================ */
+renderNav();
+go('dash');
+loadLiveCalls();
+setInterval(loadLiveCalls, 15000);
+document.getElementById('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+</script>
+</body>
+</html>

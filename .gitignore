@@ -13,3 +13,7 @@ dist/
 build/
 .DS_Store
 *.log
+
+data/calls.db
+data/calls.db-*
+data/recordings/

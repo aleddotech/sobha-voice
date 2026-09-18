@@ -27,6 +27,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from calls_api import router as calls_router
+import call_store
+
 from livekit.api import (
     AccessToken,
     VideoGrants,
@@ -79,11 +83,13 @@ atexit.register(stop_agent_worker)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    call_store.init_db()
     start_agent_worker()
     yield
     stop_agent_worker()
 
 app = FastAPI(title="Sobha Voice Agent Playground", lifespan=lifespan)
+app.include_router(calls_router)
 _cors_star = _CORS_ORIGINS == ["*"]
 app.add_middleware(
     CORSMiddleware,
@@ -107,6 +113,15 @@ async def get_token():
 
     room_name = f"sobha-{uuid.uuid4().hex[:8]}"
     identity = f"user-{uuid.uuid4().hex[:6]}"
+    call_store.upsert_call(
+        room_name,
+        caller_name=identity,
+        caller_id=identity,
+        dept="Operations",
+        issue="Live voice call",
+        outcome="resolved",
+        live=1,
+    )
 
     http_url = LIVEKIT_URL.replace("wss://", "https://").replace("ws://", "http://")
     lkapi = LiveKitAPI(http_url, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
@@ -160,6 +175,11 @@ async def health():
 @app.get("/", response_class=HTMLResponse)
 async def index():
     html_path = STATIC_DIR / "index.html"
+    return HTMLResponse(html_path.read_text())
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard():
+    html_path = STATIC_DIR / "dashboard.html"
     return HTMLResponse(html_path.read_text())
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

@@ -34,6 +34,8 @@ from livekit.agents.stt import StreamAdapter
 from sarvam_tts import SarvamTTS
 from sarvam_stt import SarvamSTT
 from routed_stt import RoutedSTT
+import call_log
+import time
 
 try:
     from livekit.plugins import noise_cancellation
@@ -317,6 +319,54 @@ async def sobha_voice_agent(ctx: JobContext):
                 sobha_tools.raise_ticket,
             ],
         )
+
+        room_id = ctx.room.name
+        t0 = time.time()
+        await call_log.ensure_call(room_id, issue="Live voice call", dept="Operations")
+
+        @session.on("user_input_transcribed")
+        def _on_user_tx(ev):
+            if getattr(ev, "is_final", True) and getattr(ev, "transcript", None):
+                asyncio.create_task(
+                    call_log.add_turn(room_id, "CALLER", ev.transcript, time.time() - t0)
+                )
+
+        @session.on("conversation_item_added")
+        def _on_item(ev):
+            item = getattr(ev, "item", None)
+            if item is None:
+                return
+            role = getattr(item, "role", "")
+            text = getattr(item, "text_content", None)
+            if isinstance(text, list):
+                text = " ".join(str(x) for x in text if x)
+            if role in ("assistant", "agent") and text:
+                asyncio.create_task(
+                    call_log.add_turn(room_id, "AGENT", str(text), time.time() - t0)
+                )
+
+        async def _on_shutdown():
+            last = None
+            try:
+                db = _load_db()
+                last = db[-1] if db else None
+            except Exception:
+                last = None
+            fields = {
+                "duration_sec": round(time.time() - t0, 1),
+                "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }
+            if last:
+                fields["ticket_id"] = last.get("ticket_id")
+                fields["ticket_status"] = last.get("status")
+                fields["issue"] = last.get("issue_type") or last.get("type") or "Live voice call"
+                fields["outcome"] = "escalated" if last.get("ticket_id") else "resolved"
+                fields["assigned_to"] = "Transport Desk"
+                fields["caller_name"] = last.get("resident_name") or last.get("name_or_emp_id")
+                fields["caller_id"] = last.get("name_or_emp_id") or last.get("resident_name")
+            await call_log.finish_call(room_id, **fields)
+
+        ctx.add_shutdown_callback(_on_shutdown)
 
         class SobhaAgent(Agent):
             async def on_enter(self) -> None:
