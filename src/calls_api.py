@@ -84,6 +84,21 @@ async def add_turn(call_id: str, payload: dict):
     return {"ok": True}
 
 
+@router.post("/api/calls/{call_id}/end")
+async def end_call(call_id: str, request: Request):
+    """Beacon-friendly hangup when the browser tab closes."""
+    payload = {}
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    payload.setdefault("ended_at", datetime.now(timezone.utc).isoformat())
+    call_store.upsert_call(call_id, **payload)
+    return {"ok": True}
+
+
 @router.patch("/api/calls/{call_id}")
 async def patch_call(call_id: str, payload: dict):
     if "ended_at" not in payload:

@@ -108,6 +108,18 @@ async def sobha_voice_agent(ctx: JobContext):
     await ctx.connect()
     print(f"[SOBHA] >>> Connected to room {ctx.room.name}", flush=True)
 
+    def _on_caller_left(participant):
+        remotes = list(ctx.room.remote_participants.values())
+        if remotes:
+            return
+        print(
+            f"[SOBHA] >>> Caller left ({getattr(participant, 'identity', '')}); shutting down",
+            flush=True,
+        )
+        ctx.shutdown("caller left")
+
+    ctx.room.on("participant_disconnected", _on_caller_left)
+
     try:
         initial_ctx = llm.ChatContext()
         initial_ctx.add_message(

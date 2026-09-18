@@ -724,12 +724,54 @@ function cleanup() {
 
 async function disconnect() {
   await stopCallRecorder();
-  if (room) {
-    try { await room.disconnect(); } catch (_) {}
-    room = null;
-  }
+  hangupRoom();
   cleanup();
 }
+
+function hangupRoom() {
+  if (room) {
+    try { room.disconnect(); } catch (_) {}
+    room = null;
+  }
+}
+
+function notifyCallEnded(callId) {
+  if (!callId) return;
+  const apiBase = (window.SOBHA_API_BASE || "").replace(/\/$/, "");
+  const url = apiBase + "/api/calls/" + callId + "/end";
+  const body = JSON.stringify({
+    ended_at: new Date().toISOString(),
+  });
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+      return;
+    }
+  } catch (_) {}
+  try {
+    fetch(url, {
+      method: "POST",
+      body,
+      headers: { "Content-Type": "application/json" },
+      keepalive: true,
+    });
+  } catch (_) {}
+}
+
+function endCallOnUnload() {
+  const id = currentCallId;
+  try {
+    if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+  } catch (_) {}
+  mediaRecorder = null;
+  hangupRoom();
+  try { releaseMic(); } catch (_) {}
+  notifyCallEnded(id);
+  currentCallId = null;
+}
+
+window.addEventListener("pagehide", endCallOnUnload);
+window.addEventListener("beforeunload", endCallOnUnload);
 
 function startCallRecorder(stream) {
   recordedChunks = [];
