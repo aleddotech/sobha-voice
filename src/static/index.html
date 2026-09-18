@@ -446,6 +446,9 @@ let vizBars = [];
 let mediaRecorder = null;
 let recordedChunks = [];
 let currentCallId = null;
+let recCtx = null;
+let recDest = null;
+let userGain = null;
 
 const _streamingSegs = new Map();
 
@@ -579,6 +582,7 @@ function attachAudioTrack(track) {
       document.addEventListener("click", resume, { once: true });
     });
   }
+  addAgentToRecorder(track);
 }
 
 async function connect() {
@@ -623,7 +627,7 @@ async function connect() {
 
   roomInfoEl.innerHTML = "Room: <b>" + data.room + "</b> &middot; Identity: <b>" + data.identity + "</b>";
   currentCallId = data.room;
-  startCallRecorder(localStream);
+  startCallRecorder();
   setStatus("Connecting to Sobha…", "connecting");
 
   room = new Room({
@@ -782,11 +786,20 @@ function endCallOnUnload() {
 window.addEventListener("pagehide", endCallOnUnload);
 window.addEventListener("beforeunload", endCallOnUnload);
 
-function startCallRecorder(stream) {
+function startCallRecorder() {
   recordedChunks = [];
   try {
+    recCtx = new (window.AudioContext || window.webkitAudioContext)();
+    recDest = recCtx.createMediaStreamDestination();
+    userGain = recCtx.createGain();
+    userGain.gain.value = muted ? 0 : 1;
+    if (localStream) {
+      recCtx.createMediaStreamSource(localStream).connect(userGain);
+      userGain.connect(recDest);
+    }
+    recCtx.resume().catch(() => {});
     const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-    mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
+    mediaRecorder = new MediaRecorder(recDest.stream, { mimeType: mime });
     mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recordedChunks.push(e.data); };
     mediaRecorder.start(1000);
   } catch (e) {
@@ -795,12 +808,32 @@ function startCallRecorder(stream) {
   }
 }
 
+function addAgentToRecorder(track) {
+  if (!recCtx || !recDest || !track) return;
+  try {
+    const msTrack = track.mediaStreamTrack || (track.mediaStream && track.mediaStream.getAudioTracks()[0]);
+    if (!msTrack) return;
+    const src = recCtx.createMediaStreamSource(new MediaStream([msTrack]));
+    src.connect(recDest);
+  } catch (e) {
+    console.warn("agent recorder mix", e);
+  }
+}
+
+function setUserRecordEnabled(on) {
+  if (userGain) userGain.gain.value = on ? 1 : 0;
+  if (localStream) localStream.getAudioTracks().forEach((t) => { t.enabled = on; });
+}
+
 async function stopCallRecorder() {
   const id = currentCallId;
   const rec = mediaRecorder;
   mediaRecorder = null;
   if (!rec || rec.state === "inactive") {
     currentCallId = null;
+    userGain = null;
+    recDest = null;
+    if (recCtx) { recCtx.close().catch(() => {}); recCtx = null; }
     return;
   }
   await new Promise((resolve) => {
@@ -820,6 +853,12 @@ async function stopCallRecorder() {
   }
   recordedChunks = [];
   currentCallId = null;
+  userGain = null;
+  recDest = null;
+  if (recCtx) {
+    recCtx.close().catch(() => {});
+    recCtx = null;
+  }
 }
 
 btnEnd.addEventListener("click", async () => {
@@ -847,6 +886,7 @@ btnMute.addEventListener("click", async () => {
       await room.localParticipant.setMicrophoneEnabled(!muted);
     }
     btnMute.textContent = muted ? "🔇 Unmute" : "🎙 Mute";
+    setUserRecordEnabled(!muted);
   } catch (e) {
     console.error("Mute toggle failed:", e);
     muted = !muted;

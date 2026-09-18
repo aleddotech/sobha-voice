@@ -19,11 +19,19 @@ from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS, APIConnectOptions
 
 _BASE_URL = "https://api.sarvam.ai/text-to-speech"
 _DEFAULT_MODEL = "bulbul:v3"
-_DEFAULT_SPEAKER = "ritu"
+_DEFAULT_SPEAKER = "ishita"
 
-# Hindi / Malayalam stay on Sarvam. English + Arabic go to ElevenLabs.
-_SARVAM_LANGS = {"hi", "hi-IN", "ml", "ml-IN"}
-_ELEVENLABS_LANGS = {"en", "en-IN", "ar", "ar-SA", "ar-AE"}
+# Sarvam female picks (en-IN Indian accent, hi, ml). Arabic is ElevenLabs only.
+_SARVAM_LANGS = {"en", "en-IN", "hi", "hi-IN", "ml", "ml-IN"}
+_ELEVENLABS_LANGS = {"ar", "ar-SA", "ar-AE"}
+_SPEAKER_BY_LANG = {
+    "en": "ishita",
+    "en-IN": "ishita",
+    "hi": "priya",
+    "hi-IN": "priya",
+    "ml": "pooja",
+    "ml-IN": "pooja",
+}
 
 # Map language codes to Sarvam target_language_code
 _LANG_MAP = {
@@ -99,19 +107,20 @@ class _ChunkedStream(tts.ChunkedStream):
             target_lang = opts.target_language_code
 
         if self._sarvam_tts._fallback_tts and _uses_elevenlabs(target_lang):
-            print(f"[TTS] ElevenLabs ({target_lang})", flush=True)
+            print(f"[TTS] ElevenLabs female ({target_lang})", flush=True)
             fallback_stream = self._sarvam_tts._fallback_tts.synthesize(
                 self._input_text, conn_options=self._conn_options
             )
             await fallback_stream._run(output_emitter)
             return
 
-        print(f"[TTS] Sarvam ({target_lang})", flush=True)
+        speaker = _SPEAKER_BY_LANG.get(target_lang, opts.speaker)
+        print(f"[TTS] Sarvam {speaker} ({target_lang})", flush=True)
 
         payload = {
             "inputs": [self._input_text],
             "target_language_code": target_lang,
-            "speaker": opts.speaker,
+            "speaker": speaker,
             "model": opts.model,
             "pace": opts.pace,
         }
@@ -159,7 +168,8 @@ class _ChunkedStream(tts.ChunkedStream):
 class SarvamTTS(tts.TTS):
     """
     LiveKit TTS Plugin powered by Sarvam AI Bulbul TTS.
-    Sarvam for Hindi and Malayalam. ElevenLabs fallback for English and Arabic.
+    Sarvam female voices for Indian English, Hindi, Malayalam.
+    ElevenLabs female fallback for Arabic.
     """
 
     def __init__(
@@ -200,6 +210,9 @@ class SarvamTTS(tts.TTS):
     def update_language(self, language: str):
         lang = (language or "en").strip()
         self._opts.target_language_code = _LANG_MAP.get(lang, lang)
+        speaker = _SPEAKER_BY_LANG.get(lang) or _SPEAKER_BY_LANG.get(self._opts.target_language_code)
+        if speaker:
+            self._opts.speaker = speaker
         if self._fallback_tts and hasattr(self._fallback_tts, "update_options"):
             el_lang = "ar" if lang.startswith("ar") else "en"
             try:

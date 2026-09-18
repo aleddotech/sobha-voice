@@ -268,7 +268,7 @@ a{color:inherit}
 .s-logo-md{width:44px;height:44px;border-radius:11px;font-size:26px}
 .s-logo-sm{width:40px;height:40px;border-radius:10px;font-size:22px}
 .brand-line{margin-top:10px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#C9A56E;font-weight:600;line-height:1.35}
-.player audio{width:100%;margin-top:10px}
+.player audio{display:none}
 </style>
 </head>
 <body>
@@ -443,11 +443,13 @@ const API_BASE=(window.SOBHA_API_BASE||'').replace(/\/$/,'');
 function liveToCall(r){
   const created=new Date(r.created_at);
   const at=created.getHours()*60+created.getMinutes();
-  const emp={id:r.caller_id||r.id,name:r.caller_name||'Caller',dept:r.dept||'Operations',phone:r.phone||''};
-  if(!EMPS.find(e=>e.id===emp.id)) EMPS.push(emp);
+  const name=r.caller_name||'Caller';
+  const empId=r.caller_id||'';
+  const emp={id:empId||r.id,name:name,dept:r.dept||'Operations',phone:r.phone||''};
+  if(empId && !EMPS.find(e=>e.id===empId)) EMPS.push(emp);
   const issue={t:r.issue||'Live call',say:'',fix:'handled the request on the Sobha agent',r:.5,team:r.assigned_to||'Transport Desk'};
   const ticket=r.ticket_id?{id:r.ticket_id,priority:r.ticket_priority||'Medium',status:r.ticket_status||'Open'}:null;
-  return {id:r.id,date:created,at,emp:emp.id,dept:emp.dept,issue,outcome:r.outcome||'resolved',dur:Math.round(r.duration_sec||0),sentiment:r.sentiment||'Neutral',ticket,seed:r.id.length,turns:r.turns||[],summary:r.summary||'',audioUrl:r.audio_url||null,live:!!r.live};
+  return {id:r.id,date:created,at,emp:emp.id,empId,callerName:name,dept:emp.dept,phone:emp.phone,issue,outcome:r.outcome||'resolved',dur:Math.round(r.duration_sec||0),sentiment:r.sentiment||'Neutral',ticket,seed:r.id.length,turns:r.turns||[],summary:r.summary||'',audioUrl:r.audio_url||null,live:!!r.live};
 }
 async function loadLiveCalls(){
   try{
@@ -499,13 +501,12 @@ function vTranscript(c){
 }
 function fmtTurn(sec){sec=Math.max(0,Math.floor(sec||0));return pad(Math.floor(sec/60))+':'+pad(sec%60)}
 function vSummary(c){
-  const e=empById(c.emp), iss=c.issue;
   if(c.summary) return c.summary;
-  let s=e.name+' from '+e.dept+' called the Sobha employee support line about “'+iss.t+'”. The agent offered Hindi, English, Malayalam and Arabic, then collected name or employee ID, bus number and stop where needed. ';
-  s+=c.outcome==='resolved'
-    ? 'The agent '+iss.fix+', and the caller confirmed the issue was sorted during the call.'
-    : 'The agent '+iss.fix+'. Ticket '+(c.ticket?c.ticket.id:'')+' was raised with '+(c.ticket?c.ticket.priority.toLowerCase():'medium')+' priority for '+iss.team+'.';
-  return s;
+  const who=c.callerName||empById(c.emp).name;
+  const iss=c.issue && c.issue.t ? c.issue.t : 'the request';
+  return c.outcome==='escalated'
+    ? who+' called about '+iss+'. Escalated'+(c.ticket?' as '+c.ticket.id:'')+'.'
+    : who+' called about '+iss+'. Sorted on the call.';
 }
 </script>
 <script>
@@ -700,7 +701,7 @@ function pgDash(){
   const resPrev=cPrev.filter(x=>x.outcome==='resolved').length, escPrev=cPrev.length-resPrev;
   const rate=c.length?Math.round(res.length/c.length*100):0;
   const avg=c.length?c.reduce((a,x)=>a+x.dur,0)/c.length:0, avgPrev=cPrev.length?cPrev.reduce((a,x)=>a+x.dur,0)/cPrev.length:0;
-  const openT=esc.filter(x=>x.ticket.status!=='Resolved'), highOpen=openT.filter(x=>x.ticket.priority==='High').length;
+  const openT=esc.filter(x=>x.ticket && x.ticket.status!=='Resolved'), highOpen=openT.filter(x=>x.ticket && x.ticket.priority==='High').length;
   const days=dayBuckets(p);
   const today=VCALLS.filter(x=>inC(x)&&dkey(x.date)===dkey(TODAY)).length;
 
@@ -752,7 +753,7 @@ function pgCalls(){
   const res=rows.filter(r=>r.outcome==='resolved'), esc=rows.filter(r=>r.outcome==='escalated');
   const avg=rows.length?Math.round(rows.reduce((a,r)=>a+r.dur,0)/rows.length):0;
   const pct=n=>rows.length?Math.round(n/rows.length*100):0;
-  const open=esc.filter(r=>r.ticket.status!=='Resolved').length;
+  const open=esc.filter(r=>r.ticket && r.ticket.status!=='Resolved').length;
   return filterBar()+`
   <div class="kpis top">
     ${kpiCard({label:'Total calls',val:rows.length,foot:`<div class="kpi-meta"><span class="mini">100% picked up on the first ring</span></div>`})}
@@ -773,15 +774,16 @@ function callBucket(title,rows,chip,note){
 const stChip=s=>s==='Resolved'?'ok':(s==='Open'?'warn':'info');
 const sentChip=s=>s==='Negative'?'bad':(s==='Positive'?'ok':'');
 function callRow(c){
-  const e=empById(c.emp);
+  const name=c.callerName||empById(c.emp).name;
+  const eid=c.empId||'';
   return `<div class="call-row" onclick="callDrawer('${c.id}')">
     <button class="play" onclick="event.stopPropagation();callDrawer('${c.id}',1)" aria-label="Play recording">${icon('play')}</button>
     <div class="call-b">
-      <div class="call-n">${e.name} <span class="muted" style="font-weight:400">&middot; ${e.id} &middot; ${e.phone}</span></div>
+      <div class="call-n">${name}${eid?` <span class="muted" style="font-weight:400">&middot; ${eid}</span>`:''}${c.phone?` <span class="muted" style="font-weight:400">&middot; ${c.phone}</span>`:''}</div>
       <div class="call-m"><span>${fmtDS(c.date)}, ${fmtT(c.at)}</span><span>&middot;</span><span>${secs(c.dur)}</span><span>&middot;</span><span>${c.issue.t}</span></div>
     </div>
     <div class="wave" aria-hidden="true">${waveBars(c.seed,26,0)}</div>
-    <div class="call-r"><span class="chip">${e.dept}</span>
+    <div class="call-r"><span class="chip">${c.dept||'Operations'}</span>
       ${c.ticket?`<span class="tnum" style="font-weight:600">${c.ticket.id}</span><span class="chip ${stChip(c.ticket.status)}">${c.ticket.status}</span>`:''}
       <span class="chip ${sentChip(c.sentiment)}">${c.sentiment}</span></div>
   </div>`;
@@ -797,17 +799,19 @@ function waveBars(seed,n,prog){
 let PL={id:null,t:0,timer:null};
 function callDrawer(id,autoplay){
   const c=VCALLS.find(x=>x.id===id); if(!c)return;
-  const e=empById(c.emp), T=c.ticket;
+  const name=c.callerName||empById(c.emp).name;
+  const T=c.ticket;
+  const esc=c.outcome==='escalated';
   PL={id,t:0,timer:null};
-  const det=[['Name',e.name],['Phone',e.phone],['Employee ID',e.id],['Department',e.dept]];
+  const det=[['Name',name||'—'],['Employee ID',c.empId||'—'],['Phone',c.phone||empById(c.emp).phone||'—'],['Department',c.dept||'Operations']];
   if(T) det.push(['Ticket ID',T.id],['Status',`<span class="chip ${stChip(T.status)}">${T.status}</span>`],['Priority',T.priority],['Assigned to',c.issue.team]);
-  drawer(e.name,`${c.id} &middot; ${fmtD(c.date)} at ${fmtT(c.at)} &middot; ${secs(c.dur)}`,
-   `<div class="rowx" style="margin-bottom:18px"><span class="chip ${T?'warn':'ok'}">${T?'Escalated':'Resolved on call'}</span>
+  drawer(name,`${c.id} &middot; ${fmtD(c.date)} at ${fmtT(c.at)} &middot; ${secs(c.dur)}`,
+   `<div class="rowx" style="margin-bottom:18px"><span class="chip ${esc?'warn':'ok'}">${esc?'Escalated':'Resolved on call'}</span>
       <span class="chip">${c.issue.t}</span>
       <span class="chip ${sentChip(c.sentiment)}">${c.sentiment}</span></div>
 
     <div class="player">
-      ${c.audioUrl?`<audio controls src="${c.audioUrl}" preload="metadata"></audio>`:''}
+      ${c.audioUrl?`<audio id="recAudio" src="${c.audioUrl}" preload="metadata"></audio>`:''}
       <div class="pl-top">
         <button class="play" id="plBtn" onclick="plToggle()">${icon('play')}</button>
         <div class="wave" id="plWave" style="flex:1;height:34px">${waveBars(c.seed,64,0)}</div>
@@ -823,26 +827,48 @@ function callDrawer(id,autoplay){
    `<button class="btn" onclick="closeDrawer()">Close</button>
     <button class="btn btn-sm" onclick="dlTranscript('${c.id}')">Download transcript</button>
     ${T?`<button class="btn btn-primary" onclick="closeDrawer();toast('Opened ${T.id}')">Open ticket</button>`:''}`);
+  const audio=document.getElementById('recAudio');
+  if(audio){
+    audio.addEventListener('timeupdate', syncPlayer);
+    audio.addEventListener('ended', ()=>{
+      const b=document.getElementById('plBtn'); if(b) b.innerHTML=icon('play');
+      syncPlayer();
+    });
+    audio.addEventListener('loadedmetadata', syncPlayer);
+  }
   if(autoplay) setTimeout(plToggle,220);
 }
 function dlTranscript(id){
-  const c=VCALLS.find(x=>x.id===id), e=empById(c.emp);
-  const txt=`${c.id} | ${e.name} | ${e.id} | ${e.dept}\n${fmtD(c.date)} ${fmtT(c.at)}\n\n`+vTranscript(c).map(r=>`[${r.t}] ${r.who}: ${r.x}`).join('\n')+`\n\nSummary: ${vSummary(c)}\n`;
+  const c=VCALLS.find(x=>x.id===id);
+  const name=c.callerName||empById(c.emp).name;
+  const txt=`${c.id} | ${name} | ${c.empId||''} | ${c.dept||''}\n${fmtD(c.date)} ${fmtT(c.at)}\n\n`+vTranscript(c).map(r=>`[${r.t}] ${r.who}: ${r.x}`).join('\n')+`\n\nSummary: ${vSummary(c)}\n`;
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain'})); a.download=c.id+'_transcript.txt'; a.click();
   toast('Transcript downloaded');
+}
+function syncPlayer(){
+  const c=VCALLS.find(x=>x.id===PL.id); if(!c)return;
+  const audio=document.getElementById('recAudio');
+  const w=document.getElementById('plWave'), t=document.getElementById('plTime');
+  const dur=audio && audio.duration && isFinite(audio.duration) ? audio.duration : c.dur;
+  const cur=audio ? audio.currentTime : (PL.t||0);
+  if(w) w.innerHTML=waveBars(c.seed,64, dur?cur/dur:0);
+  if(t) t.textContent=secs(Math.floor(cur))+' / '+secs(Math.floor(dur||c.dur));
 }
 function plToggle(){
   const c=VCALLS.find(x=>x.id===PL.id); if(!c)return;
   const btn=document.getElementById('plBtn'); if(!btn)return;
+  const audio=document.getElementById('recAudio');
+  if(audio){
+    if(audio.paused){ audio.play(); btn.innerHTML=icon('pause'); }
+    else { audio.pause(); btn.innerHTML=icon('play'); }
+    return;
+  }
   if(PL.timer){clearInterval(PL.timer);PL.timer=null;btn.innerHTML=icon('play');return}
   btn.innerHTML=icon('pause');
   PL.timer=setInterval(()=>{
     PL.t+=1.4;
-    const w=document.getElementById('plWave'), t=document.getElementById('plTime');
-    if(!w){clearInterval(PL.timer);PL.timer=null;return}
     if(PL.t>=c.dur){PL.t=c.dur;clearInterval(PL.timer);PL.timer=null;const b=document.getElementById('plBtn');if(b)b.innerHTML=icon('play')}
-    w.innerHTML=waveBars(c.seed,64,PL.t/c.dur);
-    t.textContent=secs(Math.floor(PL.t))+' / '+secs(c.dur);
+    syncPlayer();
   },140);
 }
 </script>

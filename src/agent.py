@@ -121,11 +121,28 @@ async def sobha_voice_agent(ctx: JobContext):
     ctx.room.on("participant_disconnected", _on_caller_left)
 
     try:
+        room_id = ctx.room.name
+        t0 = time.time()
         initial_ctx = llm.ChatContext()
         initial_ctx.add_message(
             content=SYSTEM_PROMPT,
             role="system",
         )
+
+        _call_notes: dict = {}
+        _turns: list[dict] = []
+        _seen_turns: set[tuple[str, str]] = set()
+
+        def _log_turn(who: str, text: str) -> None:
+            t = (text or "").strip()
+            if not t:
+                return
+            key = (who, t)
+            if key in _seen_turns:
+                return
+            _seen_turns.add(key)
+            _turns.append({"who": who, "text": t})
+            asyncio.create_task(call_log.add_turn(room_id, who, t, time.time() - t0))
 
         class SobhaTools:
             @llm.function_tool(
@@ -175,6 +192,7 @@ async def sobha_voice_agent(ctx: JobContext):
                     }
                 ]
                 chosen = random.choice(scenarios)
+                outcome = "resolved" if chosen["situation"] == 1 else "escalated"
 
                 record = {
                     "ticket_id": new_id,
@@ -186,12 +204,21 @@ async def sobha_voice_agent(ctx: JobContext):
                     "status": chosen["status"],
                     "notes": chosen["message"],
                     "eta_minutes": chosen.get("eta_minutes"),
+                    "outcome": outcome,
                     "action_delay_seconds": action_delay_seconds,
                     "created_at": now,
                 }
                 db.append(record)
                 _save_db(db)
-                print(f"[SOBHA] >>> Logged transport ticket {new_id} -> Situation {chosen['situation']}", flush=True)
+                _call_notes.setdefault("ticket_id", new_id)
+                _call_notes.setdefault("ticket_status", chosen["status"])
+                _call_notes.setdefault("issue", "Transportation - Missed Bus")
+                _call_notes.setdefault("outcome", outcome)
+                _call_notes.setdefault("assigned_to", "Transport Desk")
+                if name_or_emp_id:
+                    _call_notes.setdefault("caller_name", name_or_emp_id)
+                    _call_notes.setdefault("caller_id", name_or_emp_id)
+                print(f"[SOBHA] >>> Logged transport ticket {new_id} -> Situation {chosen['situation']} ({outcome})", flush=True)
                 return json.dumps(record, indent=2)
 
             @llm.function_tool(
@@ -247,13 +274,53 @@ async def sobha_voice_agent(ctx: JobContext):
                     "priority": priority,
                     "status": "Open",
                     "description": description,
+                    "outcome": "escalated",
                     "action_delay_seconds": action_delay_seconds,
                     "created_at": now,
                 }
                 db.append(ticket)
                 _save_db(db)
+                _call_notes.setdefault("ticket_id", new_id)
+                _call_notes.setdefault("ticket_status", "Open")
+                _call_notes.setdefault("issue", issue_type)
+                _call_notes.setdefault("outcome", "escalated")
+                _call_notes.setdefault("caller_name", resident_name)
                 print(f"[SOBHA] >>> Ticket {new_id} successfully created.", flush=True)
                 return json.dumps(ticket, indent=2)
+
+            @llm.function_tool(
+                description=(
+                    "Save caller name, employee ID, issue, outcome, and a 1-2 line summary. "
+                    "Call this once before hanging up. "
+                    "outcome must be 'resolved' or 'escalated'."
+                )
+            )
+            async def save_call_notes(
+                self,
+                caller_name: str = "",
+                caller_id: str = "",
+                issue: str = "",
+                outcome: str = "resolved",
+                summary: str = "",
+                ticket_id: str = "",
+                ticket_status: str = "",
+            ) -> str:
+                oc = (outcome or "resolved").strip().lower()
+                if oc not in ("resolved", "escalated"):
+                    oc = "resolved"
+                _call_notes.update(
+                    {
+                        "caller_name": (caller_name or "").strip(),
+                        "caller_id": (caller_id or "").strip(),
+                        "issue": (issue or "").strip() or "Live voice call",
+                        "outcome": oc,
+                        "summary": (summary or "").strip(),
+                        "ticket_id": (ticket_id or "").strip() or None,
+                        "ticket_status": (ticket_status or "").strip() or None,
+                    }
+                )
+                print(f"[SOBHA] >>> Call notes saved: {oc} / {_call_notes.get('issue')}", flush=True)
+                return "saved"
 
         sobha_tools = SobhaTools()
         vad = ctx.proc.userdata.get("vad") or silero.VAD.load(
@@ -263,17 +330,21 @@ async def sobha_voice_agent(ctx: JobContext):
             activation_threshold=0.45,
         )
 
-        # ElevenLabs for English + Arabic; Sarvam for Hindi + Malayalam
+        # Sarvam female: ishita (Indian English), priya (Hindi), pooja (Malayalam).
+        # ElevenLabs female Indian (Riya Rao) for Arabic only.
+        _el_voice = config("ELEVEN_VOICE_ID", default="hLvRzHEBXR9scnhmrX9E")
+        if _el_voice in ("", "i80JxxvpWr5Q7cTdT1Ik"):
+            _el_voice = "hLvRzHEBXR9scnhmrX9E"
         elevenlabs_tts = elevenlabs.TTS(
             model="eleven_multilingual_v2",
-            voice_id=config("ELEVEN_VOICE_ID", default="i80JxxvpWr5Q7cTdT1Ik"),
+            voice_id=_el_voice,
             api_key=config("ELEVEN_API_KEY"),
             streaming_latency=4,
         )
 
         sarvam_tts_engine = SarvamTTS(
             api_key=config("SARVAM_API_KEY"),
-            speaker="ritu",
+            speaker="ishita",
             model="bulbul:v3",
             language="en",
             pace=1.0,
@@ -305,8 +376,8 @@ async def sobha_voice_agent(ctx: JobContext):
         )
 
         print(
-            "[SOBHA] >>> TTS: Sarvam (hi, ml) | ElevenLabs (en, ar). "
-            "STT: Sarvam (hi, ml) | Deepgram Nova-3 (en, ar)",
+            "[SOBHA] >>> TTS: Sarvam female ishita/priya/pooja (en-IN, hi, ml) | "
+            "ElevenLabs female (ar). STT: Sarvam (hi, ml) | Deepgram Nova-3 (en, ar)",
             flush=True,
         )
 
@@ -329,19 +400,29 @@ async def sobha_voice_agent(ctx: JobContext):
                 sobha_tools.handle_transport_dispatch,
                 sobha_tools.lookup_requests,
                 sobha_tools.raise_ticket,
+                sobha_tools.save_call_notes,
             ],
         )
 
-        room_id = ctx.room.name
-        t0 = time.time()
         await call_log.ensure_call(room_id, issue="Live voice call", dept="Operations")
+
+        def _item_text(item) -> str:
+            text = getattr(item, "text_content", None)
+            if isinstance(text, list):
+                text = " ".join(str(x) for x in text if x)
+            if text:
+                return str(text).strip()
+            content = getattr(item, "content", None)
+            if isinstance(content, str):
+                return content.strip()
+            if isinstance(content, list):
+                return " ".join(str(x) for x in content if isinstance(x, str)).strip()
+            return ""
 
         @session.on("user_input_transcribed")
         def _on_user_tx(ev):
             if getattr(ev, "is_final", True) and getattr(ev, "transcript", None):
-                asyncio.create_task(
-                    call_log.add_turn(room_id, "CALLER", ev.transcript, time.time() - t0)
-                )
+                _log_turn("CALLER", ev.transcript)
 
         @session.on("conversation_item_added")
         def _on_item(ev):
@@ -349,33 +430,81 @@ async def sobha_voice_agent(ctx: JobContext):
             if item is None:
                 return
             role = getattr(item, "role", "")
-            text = getattr(item, "text_content", None)
-            if isinstance(text, list):
-                text = " ".join(str(x) for x in text if x)
+            text = _item_text(item)
             if role in ("assistant", "agent") and text:
-                asyncio.create_task(
-                    call_log.add_turn(room_id, "AGENT", str(text), time.time() - t0)
-                )
+                _log_turn("AGENT", text)
+            elif role == "user" and text:
+                _log_turn("CALLER", text)
+
+        async def _llm_notes() -> dict:
+            transcript = "\n".join(f"{t['who']}: {t['text']}" for t in _turns) or "(no transcript)"
+            hint = json.dumps({k: v for k, v in _call_notes.items() if v}, ensure_ascii=False)
+            prompt = (
+                "Return JSON only with keys: caller_name, caller_id, issue, outcome, summary, "
+                "ticket_id, ticket_status, assigned_to.\n"
+                "caller_name and caller_id from what the caller said. Empty string if unknown. "
+                "Do not invent. Do not use a villa/bus number as their name unless they said that is their name.\n"
+                "outcome is resolved or escalated. resolved = no complaint, status lookup, or handled on the call "
+                "(including bus late with an ETA). escalated = complaint still needs the desk.\n"
+                "summary: one or two short sentences. What they called about, and if it was resolved or escalated. "
+                "No play-by-play.\n"
+                "issue: short label like 'Missed staff bus'.\n"
+                f"Tool hints: {hint}\n\nTranscript:\n{transcript}"
+            )
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {config('OPENAI_API_KEY')}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": "gpt-4o-mini",
+                "response_format": {"type": "json_object"},
+                "temperature": 0,
+                "messages": [
+                    {"role": "system", "content": "Extract Sobha call wrap-up JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+            }
+            try:
+                import aiohttp
+                timeout = aiohttp.ClientTimeout(total=12)
+                async with aiohttp.ClientSession(timeout=timeout) as http:
+                    async with http.post(url, json=payload, headers=headers) as resp:
+                        data = await resp.json()
+                raw = data["choices"][0]["message"]["content"]
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception as e:
+                print(f"[SOBHA] >>> wrap-up LLM failed: {e}", flush=True)
+            return {}
 
         async def _on_shutdown():
-            last = None
-            try:
-                db = _load_db()
-                last = db[-1] if db else None
-            except Exception:
-                last = None
+            notes = dict(_call_notes)
+            extracted = await _llm_notes()
+            for k, v in extracted.items():
+                if v in (None, ""):
+                    continue
+                if not notes.get(k):
+                    notes[k] = v
+            oc = str(notes.get("outcome") or "resolved").strip().lower()
+            if oc not in ("resolved", "escalated"):
+                oc = "resolved"
+            if not _turns:
+                oc = "resolved"
+                notes.setdefault("issue", "Live voice call")
             fields = {
                 "duration_sec": round(time.time() - t0, 1),
                 "ended_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "caller_name": notes.get("caller_name") or None,
+                "caller_id": notes.get("caller_id") or None,
+                "issue": notes.get("issue") or "Live voice call",
+                "outcome": oc,
+                "summary": notes.get("summary") or "",
+                "ticket_id": notes.get("ticket_id") or None,
+                "ticket_status": notes.get("ticket_status") or None,
+                "assigned_to": notes.get("assigned_to") or None,
             }
-            if last:
-                fields["ticket_id"] = last.get("ticket_id")
-                fields["ticket_status"] = last.get("status")
-                fields["issue"] = last.get("issue_type") or last.get("type") or "Live voice call"
-                fields["outcome"] = "escalated" if last.get("ticket_id") else "resolved"
-                fields["assigned_to"] = "Transport Desk"
-                fields["caller_name"] = last.get("resident_name") or last.get("name_or_emp_id")
-                fields["caller_id"] = last.get("name_or_emp_id") or last.get("resident_name")
             await call_log.finish_call(room_id, **fields)
 
         ctx.add_shutdown_callback(_on_shutdown)
@@ -383,9 +512,9 @@ async def sobha_voice_agent(ctx: JobContext):
         class SobhaAgent(Agent):
             async def on_enter(self) -> None:
                 print("[SOBHA] >>> Agent on_enter called, speaking welcome greeting", flush=True)
-                self.session.say(
-                    "Thank you for reaching to Sobha agent. Which language do you prefer? We support Hindi, English, Malayalam, and Arabic."
-                )
+                greeting = "Hi, Sobha agent. Hindi, English, Malayalam, or Arabic?"
+                _log_turn("AGENT", greeting)
+                self.session.say(greeting)
 
             @llm.function_tool(
                 description=(
@@ -398,8 +527,8 @@ async def sobha_voice_agent(ctx: JobContext):
                 name = lang_names.get(lang, lang)
                 sarvam_tts_engine.update_language(lang)
                 routed_stt.update_language(lang)
-                tts_engine = "ElevenLabs" if lang in ("en", "ar") else "Sarvam"
-                stt_engine = "Deepgram" if lang in ("en", "ar") else "Sarvam"
+                tts_engine = "ElevenLabs" if lang.startswith("ar") else "Sarvam"
+                stt_engine = "Deepgram" if lang in ("en", "ar") or lang.startswith("ar") else "Sarvam"
                 print(
                     f"[SOBHA] >>> Language switched to {name} ({lang}); "
                     f"TTS={tts_engine} STT={stt_engine}",
