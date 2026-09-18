@@ -603,8 +603,17 @@ async function connect() {
   try {
     const apiBase = (window.SOBHA_API_BASE || "").replace(/\/$/, "");
     const res = await fetch(apiBase + "/api/token");
-    data = await res.json();
-    if (data.error) throw new Error(data.error);
+    const raw = await res.text();
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error(
+        res.status === 502
+          ? "Voice backend is down (Render 502). Wait for the web service to come back, then try New Call."
+          : "Token endpoint returned HTML instead of JSON (HTTP " + res.status + ")"
+      );
+    }
+    if (!res.ok || data.error) throw new Error(data.error || ("HTTP " + res.status));
   } catch (e) {
     setStatus("Token error: " + e.message, "error");
     btnNew.disabled = false;

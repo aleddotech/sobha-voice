@@ -48,9 +48,15 @@ LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "")
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-# Background agent worker process (local / single-service only)
+# Background agent worker (local only). Never spawn inside the Render web
+# dyno — LiveKit + uvicorn together OOM a Starter instance and 502 /api/token.
 _agent_process = None
-_SPAWN_AGENT = os.getenv("SPAWN_AGENT", "1").strip() not in ("0", "false", "False", "no")
+_on_render = os.getenv("RENDER") is not None
+_SPAWN_AGENT = (
+    False
+    if _on_render
+    else os.getenv("SPAWN_AGENT", "1").strip() not in ("0", "false", "False", "no")
+)
 _CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 
 def start_agent_worker():
