@@ -125,4 +125,9 @@ async def get_audio(call_id: str):
     if not path.exists():
         return JSONResponse({"error": "missing file"}, status_code=404)
     media = "audio/webm" if path.suffix == ".webm" else "audio/mpeg"
-    return FileResponse(path, media_type=media, filename=path.name)
+    return FileResponse(
+        path,
+        media_type=media,
+        filename=path.name,
+        content_disposition_type="inline",
+    )

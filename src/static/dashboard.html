@@ -449,7 +449,8 @@ function liveToCall(r){
   if(empId && !EMPS.find(e=>e.id===empId)) EMPS.push(emp);
   const issue={t:r.issue||'Live call',say:'',fix:'handled the request on the Sobha agent',r:.5,team:r.assigned_to||'Transport Desk'};
   const ticket=r.ticket_id?{id:r.ticket_id,priority:r.ticket_priority||'Medium',status:r.ticket_status||'Open'}:null;
-  return {id:r.id,date:created,at,emp:emp.id,empId,callerName:name,dept:emp.dept,phone:emp.phone,issue,outcome:r.outcome||'resolved',dur:Math.round(r.duration_sec||0),sentiment:r.sentiment||'Neutral',ticket,seed:r.id.length,turns:r.turns||[],summary:r.summary||'',audioUrl:r.audio_url||null,live:!!r.live};
+  const audioUrl=r.audio_url?(API_BASE+'/api/calls/'+encodeURIComponent(r.id)+'/audio'):null;
+  return {id:r.id,date:created,at,emp:emp.id,empId,callerName:name,dept:emp.dept,phone:emp.phone,issue,outcome:r.outcome||'resolved',dur:Math.round(r.duration_sec||0),sentiment:r.sentiment||'Neutral',ticket,seed:r.id.length,turns:r.turns||[],summary:r.summary||'',audioUrl,live:!!r.live};
 }
 async function loadLiveCalls(){
   try{
@@ -858,18 +859,12 @@ function plToggle(){
   const c=VCALLS.find(x=>x.id===PL.id); if(!c)return;
   const btn=document.getElementById('plBtn'); if(!btn)return;
   const audio=document.getElementById('recAudio');
-  if(audio){
-    if(audio.paused){ audio.play(); btn.innerHTML=icon('pause'); }
-    else { audio.pause(); btn.innerHTML=icon('play'); }
+  if(!audio){
+    toast('No recording for this call');
     return;
   }
-  if(PL.timer){clearInterval(PL.timer);PL.timer=null;btn.innerHTML=icon('play');return}
-  btn.innerHTML=icon('pause');
-  PL.timer=setInterval(()=>{
-    PL.t+=1.4;
-    if(PL.t>=c.dur){PL.t=c.dur;clearInterval(PL.timer);PL.timer=null;const b=document.getElementById('plBtn');if(b)b.innerHTML=icon('play')}
-    syncPlayer();
-  },140);
+  if(audio.paused){ audio.play().catch(()=>toast('Could not play recording')); btn.innerHTML=icon('pause'); }
+  else { audio.pause(); btn.innerHTML=icon('play'); }
 }
 </script>
 <script>

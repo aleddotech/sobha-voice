@@ -385,7 +385,7 @@ async def sobha_voice_agent(ctx: JobContext):
             stt=stt_adapter,
             llm=openai.LLM(
                 api_key=config("OPENAI_API_KEY"),
-                model="gpt-4o-mini",
+                model=config("OPENAI_MODEL", default="gpt-4o"),
             ),
             tts=sarvam_tts_engine,
             vad=vad,
@@ -534,7 +534,13 @@ async def sobha_voice_agent(ctx: JobContext):
                     f"TTS={tts_engine} STT={stt_engine}",
                     flush=True,
                 )
-                return f"Language switched to {name}. Please respond in {name} from now on."
+                speak = {
+                    "en": "Speak English only. First line: New one, or an old ticket?",
+                    "hi": "अब सिर्फ हिन्दी बोलो, आठ शब्द। पहली पंक्ति: क्या चाहिए?",
+                    "ml": "ഇനി മലയാളം മാത്രം. ഇംഗ്ലീഷ് അക്ഷരം വേണ്ട. ആദ്യ വാചകം: എന്താ വേണ്ടേ?",
+                    "ar": "تكلم عربي قصير فقط. أول جملة: شو تحتاج؟",
+                }
+                return speak.get(lang, f"Speak {name} only, short.")
 
         agent = SobhaAgent(
             instructions=SYSTEM_PROMPT,

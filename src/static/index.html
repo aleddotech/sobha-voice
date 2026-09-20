@@ -560,6 +560,18 @@ function releaseMic() {
   }
 }
 
+function ensureRecContext() {
+  try {
+    if (!recCtx || recCtx.state === "closed") {
+      recCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    recCtx.resume().catch(() => {});
+  } catch (e) {
+    recCtx = null;
+  }
+  return recCtx && recCtx.state !== "closed" ? recCtx : null;
+}
+
 function attachAudioTrack(track) {
   const prev = document.getElementById("agent-audio");
   if (prev) prev.remove();
@@ -582,7 +594,7 @@ function attachAudioTrack(track) {
       document.addEventListener("click", resume, { once: true });
     });
   }
-  addAgentToRecorder(track);
+  addAgentToRecorder(el, track);
 }
 
 async function connect() {
@@ -788,18 +800,33 @@ window.addEventListener("beforeunload", endCallOnUnload);
 
 function startCallRecorder() {
   recordedChunks = [];
-  try {
-    recCtx = new (window.AudioContext || window.webkitAudioContext)();
-    recDest = recCtx.createMediaStreamDestination();
-    userGain = recCtx.createGain();
-    userGain.gain.value = muted ? 0 : 1;
-    if (localStream) {
-      recCtx.createMediaStreamSource(localStream).connect(userGain);
+  recDest = null;
+  userGain = null;
+  const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+  let stream = localStream;
+  const ctx = ensureRecContext();
+  if (ctx && ctx.state === "running" && localStream) {
+    try {
+      recDest = ctx.createMediaStreamDestination();
+      userGain = ctx.createGain();
+      userGain.gain.value = muted ? 0 : 1;
+      ctx.createMediaStreamSource(localStream).connect(userGain);
       userGain.connect(recDest);
+      const osc = ctx.createOscillator();
+      const zg = ctx.createGain();
+      zg.gain.value = 0.0001;
+      osc.connect(zg);
+      zg.connect(recDest);
+      osc.start();
+      stream = recDest.stream;
+    } catch (e) {
+      console.warn("mix recorder, using mic", e);
+      recDest = null;
+      stream = localStream;
     }
-    recCtx.resume().catch(() => {});
-    const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
-    mediaRecorder = new MediaRecorder(recDest.stream, { mimeType: mime });
+  }
+  try {
+    mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
     mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recordedChunks.push(e.data); };
     mediaRecorder.start(1000);
   } catch (e) {
@@ -808,13 +835,23 @@ function startCallRecorder() {
   }
 }
 
-function addAgentToRecorder(track) {
-  if (!recCtx || !recDest || !track) return;
+function addAgentToRecorder(el, track) {
+  const ctx = recCtx;
+  if (!ctx || ctx.state !== "running" || !recDest) return;
   try {
-    const msTrack = track.mediaStreamTrack || (track.mediaStream && track.mediaStream.getAudioTracks()[0]);
+    if (el) {
+      const src = ctx.createMediaElementSource(el);
+      src.connect(ctx.destination);
+      src.connect(recDest);
+      return;
+    }
+  } catch (e) {
+    console.warn("agent element mix", e);
+  }
+  try {
+    const msTrack = track && (track.mediaStreamTrack || (track.mediaStream && track.mediaStream.getAudioTracks()[0]));
     if (!msTrack) return;
-    const src = recCtx.createMediaStreamSource(new MediaStream([msTrack]));
-    src.connect(recDest);
+    ctx.createMediaStreamSource(new MediaStream([msTrack])).connect(recDest);
   } catch (e) {
     console.warn("agent recorder mix", e);
   }
@@ -846,7 +883,8 @@ async function stopCallRecorder() {
     const fd = new FormData();
     fd.append("file", blob, id + ".webm");
     try {
-      await fetch(apiBase + "/api/calls/" + id + "/audio", { method: "POST", body: fd });
+      const res = await fetch(apiBase + "/api/calls/" + id + "/audio", { method: "POST", body: fd });
+      if (!res.ok) console.warn("upload audio http", res.status);
     } catch (e) {
       console.warn("upload audio", e);
     }
@@ -868,6 +906,7 @@ btnEnd.addEventListener("click", async () => {
 });
 
 btnNew.addEventListener("click", () => {
+  ensureRecContext();
   chatPanel.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; margin-top: auto; margin-bottom: auto;">Live transcript will stream word-by-word here…</div>';
   timerEl.textContent = "00:00";
   _streamingSegs.clear();
