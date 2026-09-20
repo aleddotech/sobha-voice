@@ -55,6 +55,7 @@ services:
     region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: python src/agent.py start
+    # bounce 2026-09-21: worker had unregistered; keep a LiveKit registration 24/7
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.11"
