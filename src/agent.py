@@ -418,7 +418,7 @@ async def sobha_voice_agent(ctx: JobContext):
             stt=stt_adapter,
             llm=openai.LLM(
                 api_key=config("OPENAI_API_KEY"),
-                model=config("OPENAI_MODEL", default="gpt-4o"),
+                model=config("OPENAI_MODEL", default="gpt-4.1"),
             ),
             tts=sarvam_tts_engine,
             vad=vad,
@@ -490,7 +490,7 @@ async def sobha_voice_agent(ctx: JobContext):
                 "Content-Type": "application/json",
             }
             payload = {
-                "model": "gpt-4o-mini",
+                "model": config("OPENAI_WRAPUP_MODEL", default="gpt-4.1-mini"),
                 "response_format": {"type": "json_object"},
                 "temperature": 0,
                 "messages": [

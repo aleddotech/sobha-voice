@@ -97,8 +97,8 @@ async def end_call(call_id: str, request: Request):
         payload = {}
     payload.setdefault("ended_at", datetime.now(timezone.utc).isoformat())
     call_store.upsert_call(call_id, **payload)
+    # Only this room — wiping every sobha-* here races New Call and kills the next session.
     await livekit_admin.delete_room(call_id)
-    await livekit_admin.delete_sobha_rooms()
     return {"ok": True}
 
 

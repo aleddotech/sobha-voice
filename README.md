@@ -2,7 +2,7 @@
 
 LiveKit voice assistant for Sobha Realty facilities management.
 
-**Mic → Sarvam STT → OpenAI gpt-4o-mini → Sarvam TTS (ElevenLabs for Arabic) → speaker**
+**Mic → Sarvam STT → OpenAI gpt-4.1 → Sarvam TTS (ElevenLabs for Arabic) → speaker**
 
 ## Features
 
