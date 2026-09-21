@@ -554,7 +554,10 @@ async def sobha_voice_agent(ctx: JobContext):
         class SobhaAgent(Agent):
             async def on_enter(self) -> None:
                 print("[SOBHA] >>> Agent on_enter called, speaking welcome greeting", flush=True)
-                greeting = "Hi, Sobha agent. Hindi, English, Malayalam, or Arabic?"
+                greeting = (
+                    "Hey, I'm Sobha's voice agent. How would you like me to help you? "
+                    "I speak English, Hindi, Arabic, and Malayalam."
+                )
                 _log_turn("AGENT", greeting)
                 self.session.say(greeting)
 
@@ -577,12 +580,25 @@ async def sobha_voice_agent(ctx: JobContext):
                     flush=True,
                 )
                 speak = {
-                    "en": "Speak English only. First line: New one, or an old ticket?",
-                    "hi": "अब सिर्फ हिन्दी बोलो, आठ शब्द। पहली पंक्ति: क्या चाहिए?",
-                    "ml": "ഇനി മലയാളം മാത്രം. ഇംഗ്ലീഷ് അക്ഷരം വേണ്ട. ആദ്യ വാചകം: എന്താ വേണ്ടേ?",
-                    "ar": "تكلم عربي قصير فقط. أول جملة: شو تحتاج؟",
+                    "en": (
+                        "Speak English only. Do not repeat the Sobha intro. First line: "
+                        "Would you like to raise a new ticket, or is this an existing ticket?"
+                    ),
+                    "hi": (
+                        "अब सिर्फ हिन्दी। सोभा का परिचय दोबारा मत दो। पहली पंक्ति: "
+                        "नमस्ते। मैं आपकी कैसे मदद करूँ? क्या नया टिकट खोलना है, या पहले से कोई टिकट है?"
+                    ),
+                    "ml": (
+                        "ഇനി മലയാളം മാത്രം. ഇംഗ്ലീഷ് അക്ഷരം വേണ്ട. ഷോഭ ഇൻട്രോ വീണ്ടും പറയേണ്ട. ആദ്യ വാചകം: "
+                        "നമസ്കാരം. ഞാൻ നിങ്ങളെ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്? "
+                        "പുതിയ ടിക്കറ്റ് ആണോ വേണ്ടത്, അതോ നേരത്തെ ഉണ്ടാക്കിയ ടിക്കറ്റാണോ?"
+                    ),
+                    "ar": (
+                        "تكلم عربي خليجي فقط. لا تعيد تعريف شوبا. أول جملة: "
+                        "مرحبا. كيف أقدر أساعدك؟ تبي تذكرة جديدة، ولا في تذكرة موجودة من قبل؟"
+                    ),
                 }
-                return speak.get(lang, f"Speak {name} only, short.")
+                return speak.get(lang, f"Speak {name} only.")
 
         agent = SobhaAgent(
             instructions=SYSTEM_PROMPT,
