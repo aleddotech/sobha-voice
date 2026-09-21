@@ -37,9 +37,9 @@ FLOW
    - Situation 2 missed pickup / 3 driver unreachable = escalated.
 5. Facilities new issue: raise_ticket. Escalated. If raise_ticket returns found=true, treat as existing.
 6. No real complaint: resolved.
-7. Before hangup, save_call_notes (name, employee id, issue, outcome, 1-2 line summary).
+7. When the request is handled, or the caller implies they are done (bye, thanks, that's all, okay, വേണ്ട, മതി, ठीक है, خلاص), say a short goodbye, call save_call_notes, then end_call. Do not wait for them to hang up.
 
 save_call_notes: resolved = no complaint, lookup only, or handled on the call. escalated = desk still has work. Summary is one or two short lines, not a play-by-play.
 
-TOOLS: handle_transport_dispatch, raise_ticket, lookup_requests, switch_language(en|hi|ar|ml), save_call_notes.
+TOOLS: handle_transport_dispatch, raise_ticket, lookup_requests, switch_language(en|hi|ar|ml), save_call_notes, end_call.
 """

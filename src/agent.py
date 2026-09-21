@@ -27,7 +27,7 @@ from livekit.agents import (
     llm,
     room_io,
 )
-from livekit.agents.voice import Agent, AgentSession
+from livekit.agents.voice import Agent, AgentSession, RunContext
 from livekit.plugins import openai, deepgram, elevenlabs, silero
 from livekit.agents.stt import StreamAdapter
 
@@ -331,6 +331,39 @@ async def sobha_voice_agent(ctx: JobContext):
 
             @llm.function_tool(
                 description=(
+                    "Hang up the live phone call. Call this after you have said a short goodbye "
+                    "when the caller is clearly finished: bye, thanks that's all, okay done, "
+                    "nothing else, വേണ്ട, മതി, ശരി ബായ്, बस इतना ही, ठीक है धन्यवाद, خلاص, مع السلامة. "
+                    "Do not call this during the intro or while you still need details."
+                )
+            )
+            async def end_call(self, run: RunContext) -> str:
+                print("[SOBHA] >>> end_call requested; hanging up after playout", flush=True)
+
+                async def _hangup():
+                    try:
+                        await run.wait_for_playout()
+                    except Exception:
+                        pass
+                    speech = run.session.current_speech
+                    if speech:
+                        try:
+                            await speech
+                        except Exception:
+                            pass
+                    else:
+                        await asyncio.sleep(1.2)
+                    run.session.shutdown(drain=True)
+                    try:
+                        await ctx.delete_room()
+                    except Exception:
+                        pass
+
+                asyncio.create_task(_hangup())
+                return "Hanging up after goodbye."
+
+            @llm.function_tool(
+                description=(
                     "Save caller name, employee ID, issue, outcome, and a 1-2 line summary. "
                     "Call this once before hanging up. "
                     "outcome must be 'resolved' or 'escalated'."
@@ -444,6 +477,7 @@ async def sobha_voice_agent(ctx: JobContext):
                 sobha_tools.lookup_requests,
                 sobha_tools.raise_ticket,
                 sobha_tools.save_call_notes,
+                sobha_tools.end_call,
             ],
         )
 

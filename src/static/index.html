@@ -567,11 +567,20 @@ function ensureRecContext() {
     if (!recCtx || recCtx.state === "closed") {
       recCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    recCtx.resume().catch(() => {});
   } catch (e) {
     recCtx = null;
+    return null;
   }
-  return recCtx && recCtx.state !== "closed" ? recCtx : null;
+  return recCtx;
+}
+
+async function resumeRecContext() {
+  const ctx = ensureRecContext();
+  if (!ctx) return null;
+  if (ctx.state === "suspended") {
+    try { await ctx.resume(); } catch (_) {}
+  }
+  return ctx.state === "closed" ? null : ctx;
 }
 
 function attachAudioTrack(track) {
@@ -596,7 +605,7 @@ function attachAudioTrack(track) {
       document.addEventListener("click", resume, { once: true });
     });
   }
-  addAgentToRecorder(el, track);
+  addAgentToRecorder(track);
 }
 
 async function connect(opts) {
@@ -645,7 +654,7 @@ async function connect(opts) {
 
   roomInfoEl.innerHTML = "Room: <b>" + data.room + "</b> &middot; Identity: <b>" + data.identity + "</b>";
   currentCallId = data.room;
-  startCallRecorder();
+  await startCallRecorder();
   setStatus("Connecting to Sobha…", "connecting");
 
   room = new Room({
@@ -842,14 +851,14 @@ function endCallOnUnload() {
 window.addEventListener("pagehide", endCallOnUnload);
 window.addEventListener("beforeunload", endCallOnUnload);
 
-function startCallRecorder() {
+async function startCallRecorder() {
   recordedChunks = [];
   recDest = null;
   userGain = null;
   const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+  const ctx = await resumeRecContext();
   let stream = localStream;
-  const ctx = ensureRecContext();
-  if (ctx && ctx.state === "running" && localStream) {
+  if (ctx && localStream) {
     try {
       recDest = ctx.createMediaStreamDestination();
       userGain = ctx.createGain();
@@ -879,26 +888,21 @@ function startCallRecorder() {
   }
 }
 
-function addAgentToRecorder(el, track) {
-  const ctx = recCtx;
-  if (!ctx || ctx.state !== "running" || !recDest) return;
-  try {
-    if (el) {
-      const src = ctx.createMediaElementSource(el);
-      src.connect(ctx.destination);
-      src.connect(recDest);
-      return;
+function addAgentToRecorder(track) {
+  const raw = track && (track.mediaStreamTrack || (track.mediaStream && track.mediaStream.getAudioTracks()[0]));
+  if (!raw) return;
+  const mix = () => {
+    if (!recCtx || recCtx.state === "closed" || !recDest) return false;
+    try {
+      recCtx.createMediaStreamSource(new MediaStream([raw.clone()])).connect(recDest);
+      return true;
+    } catch (e) {
+      console.warn("agent recorder mix", e);
+      return false;
     }
-  } catch (e) {
-    console.warn("agent element mix", e);
-  }
-  try {
-    const msTrack = track && (track.mediaStreamTrack || (track.mediaStream && track.mediaStream.getAudioTracks()[0]));
-    if (!msTrack) return;
-    ctx.createMediaStreamSource(new MediaStream([msTrack])).connect(recDest);
-  } catch (e) {
-    console.warn("agent recorder mix", e);
-  }
+  };
+  if (mix()) return;
+  resumeRecContext().then(() => mix());
 }
 
 function setUserRecordEnabled(on) {
