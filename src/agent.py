@@ -68,7 +68,7 @@ def _validate_env():
         print(f"[SOBHA] >>> ERROR: {msg}", flush=True)
         raise SystemExit(1)
 
-server = AgentServer()
+server = AgentServer(num_idle_processes=1, max_retry=6)
 
 def prewarm(proc):
     """Prewarm Silero VAD model with aggressive threshold for instant speech/interruption detection."""
@@ -108,9 +108,16 @@ async def sobha_voice_agent(ctx: JobContext):
     await ctx.connect()
     print(f"[SOBHA] >>> Connected to room {ctx.room.name}", flush=True)
 
+    def _has_caller() -> bool:
+        for p in ctx.room.remote_participants.values():
+            ident = (getattr(p, "identity", None) or "")
+            if ident.startswith("agent") or ident.startswith("sobha-agent"):
+                continue
+            return True
+        return False
+
     def _on_caller_left(participant):
-        remotes = list(ctx.room.remote_participants.values())
-        if remotes:
+        if _has_caller():
             return
         print(
             f"[SOBHA] >>> Caller left ({getattr(participant, 'identity', '')}); shutting down",
@@ -119,6 +126,32 @@ async def sobha_voice_agent(ctx: JobContext):
         ctx.shutdown("caller left")
 
     ctx.room.on("participant_disconnected", _on_caller_left)
+
+    async def _watch_empty_room():
+        for _ in range(12):
+            if _has_caller():
+                break
+            await asyncio.sleep(1)
+        else:
+            print("[SOBHA] >>> No caller joined; deleting empty room", flush=True)
+            ctx.shutdown("no caller")
+            try:
+                await ctx.delete_room()
+            except Exception:
+                pass
+            return
+        while True:
+            await asyncio.sleep(2)
+            if not _has_caller():
+                print("[SOBHA] >>> Room empty; shutting down", flush=True)
+                ctx.shutdown("caller gone")
+                try:
+                    await ctx.delete_room()
+                except Exception:
+                    pass
+                return
+
+    asyncio.create_task(_watch_empty_room())
 
     try:
         room_id = ctx.room.name

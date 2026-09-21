@@ -40,6 +40,8 @@ from livekit.api import (
 from livekit.protocol.room import RoomConfiguration
 from livekit.protocol.agent_dispatch import RoomAgentDispatch
 
+import livekit_admin
+
 AGENT_NAME = "sobha-agent"
 
 LIVEKIT_URL = os.getenv("LIVEKIT_URL", "")
@@ -116,8 +118,11 @@ async def get_token():
             status_code=500,
         )
 
-    # Ensure agent is running
+    # One demo call at a time — drop leftover LiveKit rooms/jobs first.
     start_agent_worker()
+    closed = await livekit_admin.delete_sobha_rooms()
+    if closed:
+        print(f"[Server] Closed leftover rooms: {closed}", flush=True)
 
     room_name = f"sobha-{uuid.uuid4().hex[:8]}"
     identity = f"user-{uuid.uuid4().hex[:6]}"
@@ -173,7 +178,11 @@ async def get_token():
         "identity": identity,
     }
 
-@app.get("/health")
+@app.post("/api/hangup")
+async def hangup_all():
+    """End every live Sobha room (tab close / End Call)."""
+    closed = await livekit_admin.delete_sobha_rooms()
+    return {"ok": True, "closed": closed}
 async def health():
     return {
         "status": "ok",

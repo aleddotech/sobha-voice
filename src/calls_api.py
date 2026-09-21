@@ -10,6 +10,7 @@ from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
 import call_store
+import livekit_admin
 
 router = APIRouter()
 
@@ -96,6 +97,8 @@ async def end_call(call_id: str, request: Request):
         payload = {}
     payload.setdefault("ended_at", datetime.now(timezone.utc).isoformat())
     call_store.upsert_call(call_id, **payload)
+    await livekit_admin.delete_room(call_id)
+    await livekit_admin.delete_sobha_rooms()
     return {"ok": True}
 
 
