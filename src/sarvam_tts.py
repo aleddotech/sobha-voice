@@ -21,9 +21,9 @@ _BASE_URL = "https://api.sarvam.ai/text-to-speech"
 _DEFAULT_MODEL = "bulbul:v3"
 _DEFAULT_SPEAKER = "ishita"
 
-# Sarvam female picks (en-IN Indian accent, hi, ml). Arabic is ElevenLabs only.
-_SARVAM_LANGS = {"en", "en-IN", "hi", "hi-IN", "ml", "ml-IN"}
-_ELEVENLABS_LANGS = {"ar", "ar-SA", "ar-AE"}
+# Sarvam: Hindi + Malayalam. ElevenLabs: English (Indian accent) + Arabic.
+_SARVAM_LANGS = {"hi", "hi-IN", "ml", "ml-IN"}
+_ELEVENLABS_LANGS = {"en", "en-IN", "ar", "ar-SA", "ar-AE"}
 _SPEAKER_BY_LANG = {
     "en": "ishita",
     "en-IN": "ishita",
@@ -74,11 +74,18 @@ def detect_text_language(text: str) -> Optional[str]:
 def _uses_elevenlabs(lang: str) -> bool:
     if not lang:
         return True
-    if lang in _ELEVENLABS_LANGS or lang.startswith("ar"):
+    if lang in _ELEVENLABS_LANGS or lang.startswith("ar") or lang.startswith("en"):
         return True
-    if lang in _SARVAM_LANGS or lang in _LANG_MAP.values():
+    if lang in _SARVAM_LANGS or lang in ("hi-IN", "ml-IN"):
         return False
-    return lang not in _LANG_MAP and lang not in _LANG_MAP.values()
+    return lang.startswith("en")
+
+
+def _pace_for(lang: str, default: float) -> float:
+    # Malayalam a touch slower so the synthesis is easier to follow.
+    if (lang or "").startswith("ml"):
+        return 0.92
+    return default
 
 
 @dataclass
@@ -107,22 +114,26 @@ class _ChunkedStream(tts.ChunkedStream):
             target_lang = opts.target_language_code
 
         if self._sarvam_tts._fallback_tts and _uses_elevenlabs(target_lang):
-            print(f"[TTS] ElevenLabs female ({target_lang})", flush=True)
-            fallback_stream = self._sarvam_tts._fallback_tts.synthesize(
-                self._input_text, conn_options=self._conn_options
-            )
-            await fallback_stream._run(output_emitter)
-            return
+            print(f"[TTS] ElevenLabs Indian accent ({target_lang})", flush=True)
+            try:
+                fallback_stream = self._sarvam_tts._fallback_tts.synthesize(
+                    self._input_text, conn_options=self._conn_options
+                )
+                await fallback_stream._run(output_emitter)
+                return
+            except Exception as e:
+                print(f"[TTS] ElevenLabs failed ({e}); Sarvam Indian English fallback", flush=True)
 
         speaker = _SPEAKER_BY_LANG.get(target_lang, opts.speaker)
-        print(f"[TTS] Sarvam {speaker} ({target_lang})", flush=True)
+        pace = _pace_for(target_lang, opts.pace)
+        print(f"[TTS] Sarvam {speaker} ({target_lang}) pace={pace}", flush=True)
 
         payload = {
             "inputs": [self._input_text],
-            "target_language_code": target_lang,
+            "target_language_code": target_lang if target_lang in _LANG_MAP.values() else _LANG_MAP.get(target_lang, "en-IN"),
             "speaker": speaker,
             "model": opts.model,
-            "pace": opts.pace,
+            "pace": pace,
         }
 
         headers = {
@@ -213,6 +224,10 @@ class SarvamTTS(tts.TTS):
         speaker = _SPEAKER_BY_LANG.get(lang) or _SPEAKER_BY_LANG.get(self._opts.target_language_code)
         if speaker:
             self._opts.speaker = speaker
+        if (lang or "").startswith("ml"):
+            self._opts.pace = 0.92
+        else:
+            self._opts.pace = 1.0
         if self._fallback_tts and hasattr(self._fallback_tts, "update_options"):
             el_lang = "ar" if lang.startswith("ar") else "en"
             try:

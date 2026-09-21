@@ -436,9 +436,6 @@ const btnNew = document.getElementById("btnNew");
 const vizEl = document.getElementById("visualizer");
 
 let room = null;
-let callGen = 0;
-let autoRestartAfterClear = false;
-let endingCall = false;
 let timerInterval = null;
 let startTime = null;
 let muted = false;
@@ -449,6 +446,8 @@ let vizBars = [];
 let mediaRecorder = null;
 let recordedChunks = [];
 let currentCallId = null;
+let userEndedCall = false;
+let connectingLock = false;
 let recCtx = null;
 let recDest = null;
 let userGain = null;
@@ -600,13 +599,12 @@ function attachAudioTrack(track) {
   addAgentToRecorder(el, track);
 }
 
-async function connect() {
-  const gen = ++callGen;
-  endingCall = false;
-  autoRestartAfterClear = false;
-  await disconnect({ hangupAll: false, wait: true });
+async function connect(opts) {
+  const isRetry = !!(opts && opts.retry);
+  userEndedCall = false;
+  await disconnect({ hangupServer: false });
 
-  setStatus("Requesting microphone…", "connecting");
+  setStatus(isRetry ? "Starting a fresh call…" : "Requesting microphone…", "connecting");
   btnNew.disabled = true;
 
   try {
@@ -642,23 +640,13 @@ async function connect() {
     releaseMic();
     return;
   }
-  if (gen !== callGen) return;
 
-  const cleared = Array.isArray(data.cleared) ? data.cleared : [];
-  autoRestartAfterClear = cleared.length > 0;
+  const roomsCleared = Array.isArray(data.cleared) && data.cleared.length > 0;
 
   roomInfoEl.innerHTML = "Room: <b>" + data.room + "</b> &middot; Identity: <b>" + data.identity + "</b>";
   currentCallId = data.room;
   startCallRecorder();
   setStatus("Connecting to Sobha…", "connecting");
-
-  const restartIfCleared = () => {
-    if (endingCall || gen !== callGen || !autoRestartAfterClear) return false;
-    autoRestartAfterClear = false;
-    setStatus("Starting a new call…", "connecting");
-    connect();
-    return true;
-  };
 
   room = new Room({
     adaptiveStream: true,
@@ -668,6 +656,13 @@ async function connect() {
 
   let agentJoined = false;
   let waitTimer = null;
+  const retryOnce = () => {
+    if (userEndedCall || isRetry || !roomsCleared || connectingLock) return false;
+    connectingLock = true;
+    setStatus("Rooms were cleared — starting the new call…", "connecting");
+    connect({ retry: true }).finally(() => { connectingLock = false; });
+    return true;
+  };
 
   room.on(RoomEvent.Connected, () => {
     agentJoined = false;
@@ -677,18 +672,16 @@ async function connect() {
     startTimer();
     clearTimeout(waitTimer);
     waitTimer = setTimeout(() => {
-      if (!agentJoined && room && gen === callGen) {
+      if (!agentJoined && room && !userEndedCall) {
+        if (retryOnce()) return;
         setStatus("Waiting for agent…", "connected");
       }
     }, 12000);
-    setTimeout(() => {
-      if (gen === callGen) autoRestartAfterClear = false;
-    }, 4000);
   });
 
   room.on(RoomEvent.Disconnected, () => {
     clearTimeout(waitTimer);
-    if (restartIfCleared()) return;
+    if (retryOnce()) return;
     setStatus("Disconnected", "ended");
     cleanup();
   });
@@ -761,7 +754,12 @@ async function connect() {
     await room.connect(data.url, data.token);
     await room.localParticipant.setMicrophoneEnabled(true);
   } catch (e) {
-    if (restartIfCleared()) return;
+    if (roomsCleared && !isRetry && !userEndedCall) {
+      setStatus("Rooms were cleared — starting the new call…", "connecting");
+      btnNew.disabled = false;
+      await connect({ retry: true });
+      return;
+    }
     setStatus("Connection failed: " + e.message, "error");
     btnNew.disabled = false;
     releaseMic();
@@ -786,12 +784,12 @@ function cleanup() {
   orb.classList.add("idle");
 }
 
-async function disconnect({ hangupAll = true, wait = false } = {}) {
+async function disconnect(opts) {
+  const hangupServer = !opts || opts.hangupServer !== false;
   const id = currentCallId;
   await stopCallRecorder();
   hangupRoom();
-  if (hangupAll) await notifyCallEnded(id, { allRooms: true, wait });
-  else if (id) await notifyCallEnded(id, { allRooms: false, wait: true });
+  if (hangupServer) notifyCallEnded(id);
   cleanup();
 }
 
@@ -802,37 +800,30 @@ function hangupRoom() {
   }
 }
 
-async function notifyCallEnded(callId, { allRooms = true, wait = false } = {}) {
+function notifyCallEnded(callId) {
   const apiBase = (window.SOBHA_API_BASE || "").replace(/\/$/, "");
-  const jobs = [];
-  if (allRooms) jobs.push({ url: apiBase + "/api/hangup", body: "{}" });
-  else if (callId) jobs.push({ url: apiBase + "/api/hangup", body: JSON.stringify({ room: callId }) });
-  if (callId) {
-    jobs.push({
-      url: apiBase + "/api/calls/" + callId + "/end",
-      body: JSON.stringify({ ended_at: new Date().toISOString() }),
-    });
-  }
-  if (!jobs.length) return;
-  const post = (j) =>
-    fetch(j.url, {
-      method: "POST",
-      body: j.body,
-      headers: { "Content-Type": "application/json" },
-      keepalive: true,
-    });
-  if (wait) {
-    await Promise.allSettled(jobs.map(post));
-    return;
-  }
-  for (const j of jobs) {
+  const ping = (url, body) => {
     try {
       if (navigator.sendBeacon) {
-        navigator.sendBeacon(j.url, new Blob([j.body], { type: "application/json" }));
-        continue;
+        navigator.sendBeacon(url, new Blob([body || "{}"], { type: "application/json" }));
+        return;
       }
     } catch (_) {}
-    try { post(j); } catch (_) {}
+    try {
+      fetch(url, {
+        method: "POST",
+        body: body || "{}",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+      });
+    } catch (_) {}
+  };
+  ping(apiBase + "/api/hangup");
+  if (callId) {
+    ping(
+      apiBase + "/api/calls/" + callId + "/end",
+      JSON.stringify({ ended_at: new Date().toISOString() }),
+    );
   }
 }
 
@@ -953,11 +944,9 @@ async function stopCallRecorder() {
 }
 
 btnEnd.addEventListener("click", async () => {
-  endingCall = true;
-  autoRestartAfterClear = false;
-  callGen += 1;
+  userEndedCall = true;
   setStatus("Ending call…", "ended");
-  await disconnect({ hangupAll: true });
+  await disconnect({ hangupServer: true });
   setStatus("Call ended", "ended");
 });
 

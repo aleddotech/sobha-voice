@@ -22,7 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / ".env")
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -180,24 +180,13 @@ async def get_token():
     }
 
 @app.post("/api/hangup")
-async def hangup_all(request: Request):
-    """End Call / tab close. JSON may name one `room` or `keep` a live room."""
-    payload = {}
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-    if not isinstance(payload, dict):
-        payload = {}
-    only = payload.get("room")
-    keep = payload.get("keep")
-    if only:
-        ok = await livekit_admin.delete_room(str(only))
-        return {"ok": True, "closed": [only] if ok else []}
-    closed = await livekit_admin.delete_sobha_rooms(keep=str(keep) if keep else None)
+async def hangup_all():
+    """End every live Sobha room (tab close / End Call)."""
+    closed = await livekit_admin.delete_sobha_rooms()
     return {"ok": True, "closed": closed}
 
 @app.get("/health")
+@app.get("/api/health")
 async def health():
     return {
         "status": "ok",

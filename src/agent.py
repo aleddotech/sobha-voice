@@ -34,6 +34,7 @@ from livekit.agents.stt import StreamAdapter
 from sarvam_tts import SarvamTTS
 from sarvam_stt import SarvamSTT
 from routed_stt import RoutedSTT
+from tickets import load_db, save_db, lookup_tickets, matching_open_tickets
 import call_log
 import time
 
@@ -81,20 +82,12 @@ def prewarm(proc):
 
 server.setup_fnc = prewarm
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "db.json")
-
 def _load_db() -> list:
-    try:
-        with open(DB_PATH, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.warning(f"Could not load DB: {e}")
-        return []
+    return load_db()
 
 def _save_db(db: list):
     try:
-        with open(DB_PATH, "w") as f:
-            json.dump(db, f, indent=2)
+        save_db(db)
     except Exception as e:
         logger.error(f"Could not save DB: {e}")
 
@@ -255,7 +248,13 @@ async def sobha_voice_agent(ctx: JobContext):
                 return json.dumps(record, indent=2)
 
             @llm.function_tool(
-                description="Look up existing maintenance requests or transportation tickets by ticket ID or resident name."
+                description=(
+                    "Search the facility DB for an existing ticket. "
+                    "Call this FIRST when the caller mentions an old/existing ticket, a ticket ID, "
+                    "or asks for status. Pass ticket_id and/or name_or_id (resident, employee, unit, bus). "
+                    "If found=true, read back ticket_id, status, assigned_to — do not raise a duplicate. "
+                    "If found=false, say it is not on file, then raise_ticket only if they want a new one."
+                )
             )
             async def lookup_requests(
                 self,
@@ -263,20 +262,20 @@ async def sobha_voice_agent(ctx: JobContext):
                 name_or_id: str | None = None,
             ) -> str:
                 logger.info(f"Lookup requests: ticket_id={ticket_id}, name_or_id={name_or_id}")
-                db = _load_db()
-                matches = []
-                for r in db:
-                    if ticket_id and r.get("ticket_id", "").lower() == ticket_id.strip().lower():
-                        matches.append(r)
-                        continue
-                    if name_or_id:
-                        val = name_or_id.strip().lower()
-                        if val in r.get("resident_name", "").lower() or val in r.get("name_or_emp_id", "").lower() or val in r.get("unit_number", "").lower():
-                            matches.append(r)
-                            continue
-                if not matches:
-                    return "No tickets found matching the provided details."
-                return json.dumps(matches[:3], indent=2)
+                result = lookup_tickets(_load_db(), ticket_id=ticket_id, name_or_id=name_or_id)
+                if result.get("found"):
+                    first = (result.get("tickets") or [{}])[0]
+                    _call_notes.setdefault("ticket_id", first.get("ticket_id"))
+                    _call_notes.setdefault("ticket_status", first.get("status"))
+                    _call_notes.setdefault("issue", first.get("issue_type") or first.get("type") or "Ticket status")
+                    _call_notes.setdefault("outcome", "resolved")
+                    if first.get("assigned_to"):
+                        _call_notes.setdefault("assigned_to", first.get("assigned_to"))
+                print(
+                    f"[SOBHA] >>> Ticket lookup found={result.get('found')} handle={result.get('handle')}",
+                    flush=True,
+                )
+                return json.dumps(result, indent=2)
 
             @llm.function_tool(
                 description=(
@@ -294,6 +293,15 @@ async def sobha_voice_agent(ctx: JobContext):
             ) -> str:
                 logger.info(f"Raise ticket: {resident_name}, issue={issue_type}, simulating {action_delay_seconds}s ticket creation...")
                 print(f"[SOBHA] >>> Registering ticket in facility system... Waiting {action_delay_seconds}s.", flush=True)
+                db = _load_db()
+                same = matching_open_tickets(db, resident_name, issue_type)
+                if same:
+                    print(f"[SOBHA] >>> Existing open ticket {same[0].get('ticket_id')}; not duplicating.", flush=True)
+                    _call_notes.setdefault("ticket_id", same[0].get("ticket_id"))
+                    _call_notes.setdefault("ticket_status", same[0].get("status"))
+                    _call_notes.setdefault("issue", issue_type)
+                    _call_notes.setdefault("outcome", "resolved")
+                    return json.dumps({"found": True, "handle": "existing", "tickets": same[:1]}, indent=2)
                 if action_delay_seconds > 0:
                     delay = max(1, min(action_delay_seconds, 30))
                     await asyncio.sleep(delay)
@@ -363,11 +371,12 @@ async def sobha_voice_agent(ctx: JobContext):
             activation_threshold=0.45,
         )
 
-        # Sarvam female: ishita (Indian English), priya (Hindi), pooja (Malayalam).
-        # ElevenLabs female Indian (Riya Rao) for Arabic only.
-        _el_voice = config("ELEVEN_VOICE_ID", default="hLvRzHEBXR9scnhmrX9E")
-        if _el_voice in ("", "i80JxxvpWr5Q7cTdT1Ik"):
-            _el_voice = "hLvRzHEBXR9scnhmrX9E"
+        # ElevenLabs: Indian-accent female Riya Rao (Data-Fluent Support) for English + Arabic.
+        # Sarvam female priya/pooja for Hindi and Malayalam.
+        _INDIAN_EN_VOICE = "aScXqoGnNOyGvIIcxgOT"
+        _el_voice = config("ELEVEN_VOICE_ID", default=_INDIAN_EN_VOICE)
+        if _el_voice in ("", "i80JxxvpWr5Q7cTdT1Ik", "hLvRzHEBXR9scnhmrX9E"):
+            _el_voice = _INDIAN_EN_VOICE
         elevenlabs_tts = elevenlabs.TTS(
             model="eleven_multilingual_v2",
             voice_id=_el_voice,
@@ -409,8 +418,9 @@ async def sobha_voice_agent(ctx: JobContext):
         )
 
         print(
-            "[SOBHA] >>> TTS: Sarvam female ishita/priya/pooja (en-IN, hi, ml) | "
-            "ElevenLabs female (ar). STT: Sarvam (hi, ml) | Deepgram Nova-3 (en, ar)",
+            "[SOBHA] >>> TTS: ElevenLabs Indian English/Arabic (Riya) | "
+            "Sarvam priya/pooja (hi, ml). STT: Deepgram (en, ar) | Sarvam (hi, ml). "
+            f"LLM={config('OPENAI_MODEL', default='gpt-5.6-terra')}",
             flush=True,
         )
 
@@ -418,7 +428,7 @@ async def sobha_voice_agent(ctx: JobContext):
             stt=stt_adapter,
             llm=openai.LLM(
                 api_key=config("OPENAI_API_KEY"),
-                model=config("OPENAI_MODEL", default="gpt-4.1"),
+                model=config("OPENAI_MODEL", default="gpt-5.6-terra"),
             ),
             tts=sarvam_tts_engine,
             vad=vad,
@@ -490,9 +500,8 @@ async def sobha_voice_agent(ctx: JobContext):
                 "Content-Type": "application/json",
             }
             payload = {
-                "model": config("OPENAI_WRAPUP_MODEL", default="gpt-4.1-mini"),
+                "model": config("OPENAI_WRAPUP_MODEL", default="gpt-5.6-luna"),
                 "response_format": {"type": "json_object"},
-                "temperature": 0,
                 "messages": [
                     {"role": "system", "content": "Extract Sobha call wrap-up JSON."},
                     {"role": "user", "content": prompt},
@@ -560,7 +569,7 @@ async def sobha_voice_agent(ctx: JobContext):
                 name = lang_names.get(lang, lang)
                 sarvam_tts_engine.update_language(lang)
                 routed_stt.update_language(lang)
-                tts_engine = "ElevenLabs" if lang.startswith("ar") else "Sarvam"
+                tts_engine = "ElevenLabs" if (lang.startswith("ar") or lang.startswith("en")) else "Sarvam"
                 stt_engine = "Deepgram" if lang in ("en", "ar") or lang.startswith("ar") else "Sarvam"
                 print(
                     f"[SOBHA] >>> Language switched to {name} ({lang}); "
